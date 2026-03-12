@@ -1,0 +1,46 @@
+<div class="page">
+  <h2>Rides</h2>
+
+  <div class="card">
+    <h3>Start a Ride</h3>
+    <div class="form-grid">
+      <label>Rider ID<input [(ngModel)]="form.riderId" /></label>
+      <label>Driver ID<input [(ngModel)]="form.driverId" /></label>
+      <label>Fare Amount<input type="number" [(ngModel)]="form.fareAmount" /></label>
+      <label>Currency<input [(ngModel)]="form.fareCurrency" /></label>
+      <label>Pickup Lat<input type="number" [(ngModel)]="form.pickupLat" /></label>
+      <label>Pickup Lng<input type="number" [(ngModel)]="form.pickupLng" /></label>
+      <label>Dropoff Lat<input type="number" [(ngModel)]="form.dropoffLat" /></label>
+      <label>Dropoff Lng<input type="number" [(ngModel)]="form.dropoffLng" /></label>
+    </div>
+    <button class="btn btn-primary" (click)="startRide()" [disabled]="loading || !!activeRideId">
+      Start Ride
+    </button>
+  </div>
+
+  @if (activeRideId) {
+    <div class="card active-ride">
+      <h3>Active Ride</h3>
+      <p class="ride-id">{{ activeRideId }}</p>
+      <div class="actions">
+        <button class="btn btn-success" (click)="completeRide()" [disabled]="loading">Complete Ride</button>
+        <div class="cancel-group">
+          <input [(ngModel)]="cancelReason" placeholder="Cancel reason" />
+          <button class="btn btn-danger" (click)="cancelRide()" [disabled]="loading">Cancel Ride</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (logs.length > 0) {
+    <div class="card">
+      <div class="log-header">
+        <h3>Event Log</h3>
+        <button class="btn btn-sm" (click)="clearLogs()">Clear</button>
+      </div>
+      @for (log of logs; track $index) {
+        <div class="log-entry" [class]="log.type">{{ log.message }}</div>
+      }
+    </div>
+  }
+</div>

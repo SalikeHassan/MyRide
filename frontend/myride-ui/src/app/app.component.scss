@@ -1,0 +1,68 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: #f4f6f9;
+  color: #333;
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.navbar {
+  display: flex;
+  align-items: center;
+  background: #1a1a2e;
+  padding: 0 2rem;
+  height: 60px;
+  gap: 2rem;
+
+  .navbar-brand {
+    color: #fff;
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+
+  .navbar-links {
+    display: flex;
+    gap: 1.5rem;
+
+    a {
+      color: #aaa;
+      text-decoration: none;
+      font-size: 0.95rem;
+      padding: 0.3rem 0.6rem;
+      border-radius: 4px;
+      transition: all 0.2s;
+
+      &:hover { color: #fff; }
+
+      &.active {
+        color: #fff;
+        background: #e94560;
+      }
+    }
+  }
+
+  .tenant-badge {
+    margin-left: auto;
+    background: #0f3460;
+    color: #fff;
+    padding: 0.2rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+  }
+}
+
+.content {
+  flex: 1;
+  padding: 2rem;
+}

@@ -1,0 +1,61 @@
+# ─── .NET ────────────────────────────────────────────────────────────────────
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.userprefs
+*.usertasks
+TestResults/
+*.ncrunchproject
+*.ncrunchsolution
+.idea/
+*.DotSettings.user
+
+# ─── NuGet ───────────────────────────────────────────────────────────────────
+*.nupkg
+*.snupkg
+.nuget/packages/
+packages/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# ─── Publish output ──────────────────────────────────────────────────────────
+publish/
+**/Properties/PublishProfiles/
+
+# ─── Secrets / config overrides ──────────────────────────────────────────────
+appsettings.Development.json
+appsettings.Local.json
+secrets.json
+.env
+.env.*
+
+# ─── Node / Angular ──────────────────────────────────────────────────────────
+node_modules/
+dist/
+.angular/
+*.js.map
+npm-debug.log*
+yarn-error.log*
+.pnp
+.pnp.js
+
+# ─── OS ──────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── JetBrains Rider ─────────────────────────────────────────────────────────
+.idea/
+*.iml
+
+# ─── VS Code ─────────────────────────────────────────────────────────────────
+.vscode/
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# ─── Logs ────────────────────────────────────────────────────────────────────
+*.log
+logs/

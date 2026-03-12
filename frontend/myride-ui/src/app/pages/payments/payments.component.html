@@ -1,0 +1,38 @@
+<div class="page">
+  <h2>Payments</h2>
+
+  <div class="card">
+    <h3>Charge Rider</h3>
+    <div class="form-grid">
+      <label>Payer ID<input [(ngModel)]="chargeForm.payerId" /></label>
+      <label>Payee ID<input [(ngModel)]="chargeForm.payeeId" /></label>
+      <label>Amount<input type="number" [(ngModel)]="chargeForm.amount" /></label>
+      <label>Currency<input [(ngModel)]="chargeForm.currency" /></label>
+    </div>
+    <label class="checkbox-label">
+      <input type="checkbox" [(ngModel)]="chargeForm.simulateFailure" />
+      Simulate Failure
+    </label>
+    <button class="btn btn-primary" (click)="chargeRider()" [disabled]="loading">Charge Rider</button>
+  </div>
+
+  <div class="card">
+    <h3>Refund Rider</h3>
+    <div class="inline-group">
+      <input [(ngModel)]="refundPaymentId" placeholder="Payment ID" />
+      <button class="btn btn-danger" (click)="refundRider()" [disabled]="loading || !refundPaymentId">Refund</button>
+    </div>
+  </div>
+
+  @if (logs.length > 0) {
+    <div class="card">
+      <div class="log-header">
+        <h3>Event Log</h3>
+        <button class="btn btn-sm" (click)="clearLogs()">Clear</button>
+      </div>
+      @for (log of logs; track $index) {
+        <div class="log-entry" [class]="log.type">{{ log.message }}</div>
+      }
+    </div>
+  }
+</div>

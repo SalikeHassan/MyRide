@@ -1,0 +1,39 @@
+{
+  "UserConfig": {
+    "Namespaces": [
+      {
+        "Name": "myride",
+        "Queues": [],
+        "Topics": [
+          {
+            "Name": "rides",
+            "Subscriptions": [
+              {
+                "Name": "saga-subscription"
+              }
+            ]
+          },
+          {
+            "Name": "payments",
+            "Subscriptions": [
+              {
+                "Name": "saga-subscription"
+              }
+            ]
+          },
+          {
+            "Name": "payouts",
+            "Subscriptions": [
+              {
+                "Name": "saga-subscription"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "Logging": {
+      "Type": "File"
+    }
+  }
+}
