@@ -1,28 +1,22 @@
-using Azure.Messaging.ServiceBus;
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization;
-using MongoDB.Bson.Serialization.Serializers;
-using MongoDB.Driver;
-using Payments.Application.Handlers;
-using Payments.Application.Ports;
-using Payments.Infrastructure.Messaging;
-using Payments.Infrastructure.Persistence;
-using Payouts.Application.Handlers;
-using Payouts.Application.Ports;
-using Payouts.Infrastructure.Messaging;
-using Payouts.Infrastructure.Persistence;
-using Rides.Application.Handlers;
-using Rides.Application.Ports;
-using Rides.Infrastructure.Messaging;
-using Rides.Infrastructure.Persistence;
+using Asp.Versioning;
+using Microsoft.Extensions.Http.Resilience;
+using MyRide.API.Clients;
+using Polly;
+using Refit;
 using Scalar.AspNetCore;
-
-BsonSerializer.RegisterSerializer(new GuidSerializer(GuidRepresentation.Standard));
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new ApiVersion(1);
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.ReportApiVersions = true;
+}).AddMvc();
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngular", policy =>
@@ -33,48 +27,26 @@ builder.Services.AddCors(options =>
     });
 });
 
-// MongoDB
-var mongoConnectionString = builder.Configuration["MongoDB:ConnectionString"]!;
-var mongoDatabaseName = builder.Configuration["MongoDB:DatabaseName"]!;
+// Downstream service base URLs
+var ridesApiUrl = builder.Configuration["DownstreamServices:RidesApi"]!;
+var paymentsApiUrl = builder.Configuration["DownstreamServices:PaymentsApi"]!;
+var payoutsApiUrl = builder.Configuration["DownstreamServices:PayoutsApi"]!;
 
-builder.Services.AddSingleton<IMongoClient>(_ => new MongoClient(mongoConnectionString));
-builder.Services.AddSingleton<IMongoDatabase>(sp =>
-    sp.GetRequiredService<IMongoClient>().GetDatabase(mongoDatabaseName));
+// Refit clients with resilience pipeline
+builder.Services
+    .AddRefitClient<IRidesApi>()
+    .ConfigureHttpClient(c => c.BaseAddress = new Uri(ridesApiUrl))
+    .AddResilienceHandler("rides-resilience", ConfigureResilience);
 
-// Service Bus
-var serviceBusConnectionString = builder.Configuration["ServiceBus:ConnectionString"]!;
-var ridesTopic = builder.Configuration["ServiceBus:RidesTopic"]!;
-var paymentsTopic = builder.Configuration["ServiceBus:PaymentsTopic"]!;
-var payoutsTopic = builder.Configuration["ServiceBus:PayoutsTopic"]!;
+builder.Services
+    .AddRefitClient<IPaymentsApi>()
+    .ConfigureHttpClient(c => c.BaseAddress = new Uri(paymentsApiUrl))
+    .AddResilienceHandler("payments-resilience", ConfigureResilience);
 
-builder.Services.AddSingleton<ServiceBusClient>(_ => new ServiceBusClient(serviceBusConnectionString));
-builder.Services.AddKeyedSingleton<ServiceBusSender>("rides", (sp, _) =>
-    sp.GetRequiredService<ServiceBusClient>().CreateSender(ridesTopic));
-builder.Services.AddKeyedSingleton<ServiceBusSender>("payments", (sp, _) =>
-    sp.GetRequiredService<ServiceBusClient>().CreateSender(paymentsTopic));
-builder.Services.AddKeyedSingleton<ServiceBusSender>("payouts", (sp, _) =>
-    sp.GetRequiredService<ServiceBusClient>().CreateSender(payoutsTopic));
-
-// Rides
-builder.Services.AddScoped<IRideEventStore, MongoRideEventStore>();
-builder.Services.AddScoped<IRideEventPublisher, RideEventPublisher>();
-builder.Services.AddScoped<IRideReadStore, MongoRideReadStore>();
-builder.Services.AddScoped<StartRideHandler>();
-builder.Services.AddScoped<AcceptRideHandler>();
-builder.Services.AddScoped<CompleteRideHandler>();
-builder.Services.AddScoped<CancelRideHandler>();
-
-// Payments
-builder.Services.AddScoped<IPaymentEventStore, MongoPaymentEventStore>();
-builder.Services.AddScoped<IPaymentEventPublisher, PaymentEventPublisher>();
-builder.Services.AddScoped<ChargeRiderHandler>();
-builder.Services.AddScoped<RefundRiderHandler>();
-
-// Payouts
-builder.Services.AddScoped<IPayoutEventStore, MongoPayoutEventStore>();
-builder.Services.AddScoped<IPayoutEventPublisher, PayoutEventPublisher>();
-builder.Services.AddScoped<PayDriverHandler>();
-builder.Services.AddScoped<CancelPayoutHandler>();
+builder.Services
+    .AddRefitClient<IPayoutsApi>()
+    .ConfigureHttpClient(c => c.BaseAddress = new Uri(payoutsApiUrl))
+    .AddResilienceHandler("payouts-resilience", ConfigureResilience);
 
 var app = builder.Build();
 
@@ -90,3 +62,27 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+static void ConfigureResilience(ResiliencePipelineBuilder<HttpResponseMessage> pipeline)
+{
+    // 1. Overall timeout — cancel if entire operation exceeds 10s
+    pipeline.AddTimeout(TimeSpan.FromSeconds(10));
+
+    // 2. Retry — 3 attempts with exponential backoff + jitter
+    pipeline.AddRetry(new HttpRetryStrategyOptions
+    {
+        MaxRetryAttempts = 3,
+        Delay = TimeSpan.FromMilliseconds(500),
+        BackoffType = DelayBackoffType.Exponential,
+        UseJitter = true
+    });
+
+    // 3. Circuit breaker — opens after 50% failure rate over 5+ calls in 30s
+    pipeline.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
+    {
+        SamplingDuration = TimeSpan.FromSeconds(30),
+        FailureRatio = 0.5,
+        MinimumThroughput = 5,
+        BreakDuration = TimeSpan.FromSeconds(15)
+    });
+}

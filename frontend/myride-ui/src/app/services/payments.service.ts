@@ -13,7 +13,7 @@ export interface ChargeRiderRequest {
 
 @Injectable({ providedIn: 'root' })
 export class PaymentsService {
-  private readonly baseUrl = `${environment.apiUrl}/api/payments`;
+  private readonly baseUrl = `${environment.apiUrl}/api/v1/payments`;
 
   constructor(private http: HttpClient) {}
 

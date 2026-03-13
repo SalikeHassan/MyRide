@@ -1,53 +1,36 @@
+using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
-using Payments.Application.Handlers;
-using Payments.Domain.Commands;
+using MyRide.API.Clients;
 
 namespace MyRide.API.Controllers;
 
 [ApiController]
-[Route("api/payments")]
+[ApiVersion(1)]
+[Route("api/v{version:apiVersion}/payments")]
 public class PaymentsController : ControllerBase
 {
-    private readonly ChargeRiderHandler chargeRiderHandler;
-    private readonly RefundRiderHandler refundRiderHandler;
+    private readonly IPaymentsApi paymentsApi;
 
-    public PaymentsController(ChargeRiderHandler chargeRiderHandler, RefundRiderHandler refundRiderHandler)
+    public PaymentsController(IPaymentsApi paymentsApi)
     {
-        this.chargeRiderHandler = chargeRiderHandler;
-        this.refundRiderHandler = refundRiderHandler;
+        this.paymentsApi = paymentsApi;
     }
 
     [HttpPost("charge")]
-    public async Task<IActionResult> ChargeRider([FromBody] ChargeRiderRequest request, [FromHeader(Name = "X-Tenant-Id")] string tenantId)
+    public async Task<IActionResult> ChargeRider(
+        [FromBody] ChargeRiderRequest request,
+        [FromHeader(Name = "X-Tenant-Id")] string tenantId)
     {
-        var command = new ChargeRiderCommand(
-            Guid.NewGuid(),
-            tenantId,
-            request.PayerId,
-            request.PayeeId,
-            request.Amount,
-            request.Currency,
-            request.SimulateFailure);
-
-        await chargeRiderHandler.HandleAsync(command);
-
-        return Ok(new { Message = "Rider charged." });
+        var response = await paymentsApi.ChargeRiderAsync(request, tenantId);
+        return Ok(response);
     }
 
     [HttpPost("{paymentId:guid}/refund")]
-    public async Task<IActionResult> RefundRider(Guid paymentId, [FromHeader(Name = "X-Tenant-Id")] string tenantId)
+    public async Task<IActionResult> RefundRider(
+        Guid paymentId,
+        [FromHeader(Name = "X-Tenant-Id")] string tenantId)
     {
-        var command = new RefundRiderCommand(paymentId, tenantId);
-
-        await refundRiderHandler.HandleAsync(command);
-
+        await paymentsApi.RefundRiderAsync(paymentId, tenantId);
         return Ok(new { paymentId, Message = "Rider refunded." });
     }
 }
-
-public record ChargeRiderRequest(
-    Guid PayerId,
-    Guid PayeeId,
-    decimal Amount,
-    string Currency,
-    bool SimulateFailure = false);

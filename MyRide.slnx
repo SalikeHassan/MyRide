@@ -4,16 +4,19 @@
     <Project Path="src/SharedKernel/SharedKernel.csproj" />
   </Folder>
   <Folder Name="/src/Payments/">
+    <Project Path="src/Payments.API/Payments.API.csproj" />
     <Project Path="src/Payments.Application/Payments.Application.csproj" />
     <Project Path="src/Payments.Domain/Payments.Domain.csproj" />
     <Project Path="src/Payments.Infrastructure/Payments.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/src/Payouts/">
+    <Project Path="src/Payouts.API/Payouts.API.csproj" />
     <Project Path="src/Payouts.Application/Payouts.Application.csproj" />
     <Project Path="src/Payouts.Domain/Payouts.Domain.csproj" />
     <Project Path="src/Payouts.Infrastructure/Payouts.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/src/Rides/">
+    <Project Path="src/Rides/Rides.API/Rides.API.csproj" />
     <Project Path="src/Rides/Rides.Application/Rides.Application.csproj" />
     <Project Path="src/Rides/Rides.Domain/Rides.Domain.csproj" />
     <Project Path="src/Rides/Rides.Infrastructure/Rides.Infrastructure.csproj" />

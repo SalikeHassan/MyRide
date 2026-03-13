@@ -1,89 +1,55 @@
+using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
-using Rides.Application.Handlers;
-using Rides.Domain.Commands;
+using MyRide.API.Clients;
 
 namespace MyRide.API.Controllers;
 
 [ApiController]
-[Route("api/rides")]
+[ApiVersion(1)]
+[Route("api/v{version:apiVersion}/rides")]
 public class RidesController : ControllerBase
 {
-    private readonly StartRideHandler startRideHandler;
-    private readonly AcceptRideHandler acceptRideHandler;
-    private readonly CompleteRideHandler completeRideHandler;
-    private readonly CancelRideHandler cancelRideHandler;
+    private readonly IRidesApi ridesApi;
 
-    public RidesController(
-        StartRideHandler startRideHandler,
-        AcceptRideHandler acceptRideHandler,
-        CompleteRideHandler completeRideHandler,
-        CancelRideHandler cancelRideHandler)
+    public RidesController(IRidesApi ridesApi)
     {
-        this.startRideHandler = startRideHandler;
-        this.acceptRideHandler = acceptRideHandler;
-        this.completeRideHandler = completeRideHandler;
-        this.cancelRideHandler = cancelRideHandler;
+        this.ridesApi = ridesApi;
     }
 
     [HttpPost("start")]
-    public async Task<IActionResult> StartRide([FromBody] StartRideRequest request, [FromHeader(Name = "X-Tenant-Id")] string tenantId)
+    public async Task<IActionResult> StartRide(
+        [FromBody] StartRideRequest request,
+        [FromHeader(Name = "X-Tenant-Id")] string tenantId)
     {
-        var command = new StartRideCommand(
-            Guid.NewGuid(),
-            tenantId,
-            request.RiderId,
-            request.DriverId,
-            request.FareAmount,
-            request.FareCurrency,
-            request.PickupLat,
-            request.PickupLng,
-            request.DropoffLat,
-            request.DropoffLng);
-
-        await startRideHandler.HandleAsync(command);
-
-        return Ok(new { command.RideId, Message = "Ride started." });
+        var response = await ridesApi.StartRideAsync(request, tenantId);
+        return Ok(response);
     }
 
     [HttpPost("{rideId:guid}/accept")]
-    public async Task<IActionResult> AcceptRide(Guid rideId, [FromHeader(Name = "X-Tenant-Id")] string tenantId)
+    public async Task<IActionResult> AcceptRide(
+        Guid rideId,
+        [FromHeader(Name = "X-Tenant-Id")] string tenantId)
     {
-        var command = new AcceptRideCommand(rideId, tenantId);
-
-        await acceptRideHandler.HandleAsync(command);
-
+        await ridesApi.AcceptRideAsync(rideId, tenantId);
         return Ok(new { rideId, Message = "Ride accepted by driver." });
     }
 
     [HttpPost("{rideId:guid}/complete")]
-    public async Task<IActionResult> CompleteRide(Guid rideId, [FromHeader(Name = "X-Tenant-Id")] string tenantId)
+    public async Task<IActionResult> CompleteRide(
+        Guid rideId,
+        [FromHeader(Name = "X-Tenant-Id")] string tenantId)
     {
-        var command = new CompleteRideCommand(rideId, tenantId);
-
-        await completeRideHandler.HandleAsync(command);
-
+        await ridesApi.CompleteRideAsync(rideId, tenantId);
         return Ok(new { rideId, Message = "Ride completed." });
     }
 
     [HttpPost("{rideId:guid}/cancel")]
-    public async Task<IActionResult> CancelRide(Guid rideId, [FromBody] CancelRideRequest request, [FromHeader(Name = "X-Tenant-Id")] string tenantId)
+    public async Task<IActionResult> CancelRide(
+        Guid rideId,
+        [FromBody] CancelRideRequest request,
+        [FromHeader(Name = "X-Tenant-Id")] string tenantId)
     {
-        var command = new CancelRideCommand(rideId, tenantId, request.Reason);
-
-        await cancelRideHandler.HandleAsync(command);
-
+        await ridesApi.CancelRideAsync(rideId, request, tenantId);
         return Ok(new { rideId, Message = "Ride cancelled." });
     }
 }
-
-public record StartRideRequest(
-    Guid RiderId,
-    Guid DriverId,
-    decimal FareAmount,
-    string FareCurrency,
-    double PickupLat,
-    double PickupLng,
-    double DropoffLat,
-    double DropoffLng);
-
-public record CancelRideRequest(string Reason);

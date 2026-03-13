@@ -21,7 +21,7 @@ export interface RideResponse {
 
 @Injectable({ providedIn: 'root' })
 export class RidesService {
-  private readonly baseUrl = `${environment.apiUrl}/api/rides`;
+  private readonly baseUrl = `${environment.apiUrl}/api/v1/rides`;
 
   constructor(private http: HttpClient) {}
 

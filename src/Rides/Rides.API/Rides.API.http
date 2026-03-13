@@ -1,0 +1,6 @@
+@Rides.API_HostAddress = http://localhost:5122
+
+GET {{Rides.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

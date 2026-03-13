@@ -12,7 +12,7 @@ export interface PayDriverRequest {
 
 @Injectable({ providedIn: 'root' })
 export class PayoutsService {
-  private readonly baseUrl = `${environment.apiUrl}/api/payouts`;
+  private readonly baseUrl = `${environment.apiUrl}/api/v1/payouts`;
 
   constructor(private http: HttpClient) {}
 

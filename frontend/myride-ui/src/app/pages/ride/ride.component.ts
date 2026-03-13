@@ -28,6 +28,7 @@ export class RideComponent {
   loading = false;
 
   rideId: string | null = null;
+  paymentId: string | null = null;
   fareAmount = 25.50;
   fareCurrency = 'GBP';
   simulateFailure: SimulateFailure = 'none';
@@ -135,7 +136,8 @@ export class RideComponent {
       currency: this.fareCurrency,
       simulateFailure: simulatePaymentFailure
     }, this.tenantId).subscribe({
-      next: () => {
+      next: (res) => {
+        this.paymentId = res.paymentId;
         this.addTimeline(`Rider Charged £${this.fareAmount}`, 'success');
         this.processPayoutAfterCharge(simulatePayoutFailure);
       },
@@ -165,7 +167,7 @@ export class RideComponent {
   }
 
   private processRefund(): void {
-    this.paymentsService.refundRider(this.rideId!, this.tenantId).subscribe({
+    this.paymentsService.refundRider(this.paymentId!, this.tenantId).subscribe({
       next: () => {
         this.addTimeline('Rider Refunded', 'success');
         this.loading = false;
@@ -179,6 +181,7 @@ export class RideComponent {
 
   resetRide(): void {
     this.rideId = null;
+    this.paymentId = null;
     this.rideStatus = 'idle';
     this.timeline = [];
     this.simulateFailure = 'none';

@@ -7,18 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.20.1" />
+    <PackageReference Include="Asp.Versioning.Mvc" Version="8.1.1" />
+    <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="8.1.1" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.3" />
-    <PackageReference Include="MongoDB.Driver" Version="3.7.0" />
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="9.3.0" />
+    <PackageReference Include="Refit.HttpClientFactory" Version="8.0.0" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.13.2" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Payments.Infrastructure\Payments.Infrastructure.csproj" />
-    <ProjectReference Include="..\Payouts.Infrastructure\Payouts.Infrastructure.csproj" />
-    <ProjectReference Include="..\SharedKernel\SharedKernel.csproj" />
-    <ProjectReference Include="..\Rides\Rides.Application\Rides.Application.csproj" />
-    <ProjectReference Include="..\Rides\Rides.Infrastructure\Rides.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

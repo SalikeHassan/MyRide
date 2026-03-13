@@ -1,53 +1,37 @@
+using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
-using Payouts.Application.Handlers;
-using Payouts.Domain.Commands;
+using MyRide.API.Clients;
 
 namespace MyRide.API.Controllers;
 
 [ApiController]
-[Route("api/payouts")]
+[ApiVersion(1)]
+[Route("api/v{version:apiVersion}/payouts")]
 public class PayoutsController : ControllerBase
 {
-    private readonly PayDriverHandler payDriverHandler;
-    private readonly CancelPayoutHandler cancelPayoutHandler;
+    private readonly IPayoutsApi payoutsApi;
 
-    public PayoutsController(PayDriverHandler payDriverHandler, CancelPayoutHandler cancelPayoutHandler)
+    public PayoutsController(IPayoutsApi payoutsApi)
     {
-        this.payDriverHandler = payDriverHandler;
-        this.cancelPayoutHandler = cancelPayoutHandler;
+        this.payoutsApi = payoutsApi;
     }
 
     [HttpPost("pay")]
-    public async Task<IActionResult> PayDriver([FromBody] PayDriverRequest request, [FromHeader(Name = "X-Tenant-Id")] string tenantId)
+    public async Task<IActionResult> PayDriver(
+        [FromBody] PayDriverRequest request,
+        [FromHeader(Name = "X-Tenant-Id")] string tenantId)
     {
-        var command = new PayDriverCommand(
-            Guid.NewGuid(),
-            tenantId,
-            request.RecipientId,
-            request.Amount,
-            request.Currency,
-            request.SimulateFailure);
-
-        await payDriverHandler.HandleAsync(command);
-
+        await payoutsApi.PayDriverAsync(request, tenantId);
         return Ok(new { Message = "Driver paid." });
     }
 
     [HttpPost("{payoutId:guid}/cancel")]
-    public async Task<IActionResult> CancelPayout(Guid payoutId, [FromBody] CancelPayoutRequest request, [FromHeader(Name = "X-Tenant-Id")] string tenantId)
+    public async Task<IActionResult> CancelPayout(
+        Guid payoutId,
+        [FromBody] CancelPayoutRequest request,
+        [FromHeader(Name = "X-Tenant-Id")] string tenantId)
     {
-        var command = new CancelPayoutCommand(payoutId, tenantId, request.Reason);
-
-        await cancelPayoutHandler.HandleAsync(command);
-
+        await payoutsApi.CancelPayoutAsync(payoutId, request, tenantId);
         return Ok(new { payoutId, Message = "Payout cancelled." });
     }
 }
-
-public record PayDriverRequest(
-    Guid RecipientId,
-    decimal Amount,
-    string Currency,
-    bool SimulateFailure = false);
-
-public record CancelPayoutRequest(string Reason);
