@@ -15,6 +15,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Rides.Infrastructure\Rides.Infrastructure.csproj" />
+      <ProjectReference Include="..\..\Drivers.Infrastructure\Drivers.Infrastructure.csproj" />
     </ItemGroup>
 
 </Project>

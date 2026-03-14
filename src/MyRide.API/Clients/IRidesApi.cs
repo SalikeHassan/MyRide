@@ -2,9 +2,11 @@ using Refit;
 
 namespace MyRide.API.Clients;
 
-public interface 
-    IRidesApi
+public interface IRidesApi
 {
+    [Get("/api/v1/rides/active")]
+    Task<List<ActiveRideResponse>> GetActiveRidesAsync([Header("X-Tenant-Id")] string tenantId);
+
     [Post("/api/v1/rides/start")]
     Task<StartRideResponse> StartRideAsync([Body] StartRideRequest request, [Header("X-Tenant-Id")] string tenantId);
 
@@ -21,6 +23,7 @@ public interface
 public record StartRideRequest(
     Guid RiderId,
     Guid DriverId,
+    string DriverName,
     decimal FareAmount,
     string FareCurrency,
     double PickupLat,
@@ -31,3 +34,14 @@ public record StartRideRequest(
 public record StartRideResponse(Guid RideId, string Message);
 
 public record CancelRideRequest(string Reason);
+
+public record ActiveRideResponse(
+    Guid RideId,
+    string TenantId,
+    Guid RiderId,
+    Guid DriverId,
+    string DriverName,
+    string Status,
+    decimal FareAmount,
+    string FareCurrency,
+    DateTime LastUpdatedOn);

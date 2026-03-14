@@ -51,7 +51,10 @@ public class StartRideHandler
             TenantId = ride.TenantId,
             RiderId = ride.RiderId,
             DriverId = ride.DriverId,
+            DriverName = command.DriverName,
             Status = ride.Status,
+            FareAmount = ride.Fare.Amount,
+            FareCurrency = ride.Fare.Currency,
             LastUpdatedOn = DateTime.UtcNow
         });
 

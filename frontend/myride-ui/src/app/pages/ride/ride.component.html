@@ -1,130 +1,174 @@
 <div class="ride-page">
 
-  <!-- Tabs -->
-  <div class="tabs">
-    <button class="tab" [class.active]="activeTab === 'rider'" (click)="activeTab = 'rider'">🧑 Rider</button>
-    <button class="tab" [class.active]="activeTab === 'driver'" (click)="activeTab = 'driver'">🚗 Driver</button>
-  </div>
-
   <div class="panels">
 
-    <!-- LEFT: Rider or Driver panel -->
+    <!-- LEFT: Ride request flow -->
     <div class="panel">
+      <div class="card">
+        <h3>Request a Ride</h3>
 
-      <!-- RIDER TAB -->
-      @if (activeTab === 'rider') {
-        <div class="card">
-          <h3>Request a Ride</h3>
-
-          @if (rideStatus === 'idle' || rideStatus === 'cancelled') {
-            <div class="form-group">
-              <label>Fare Amount
-                <input type="number" [(ngModel)]="fareAmount" />
-              </label>
-              <label>Currency
-                <input [(ngModel)]="fareCurrency" />
-              </label>
-            </div>
-            <button class="btn btn-primary" (click)="requestRide()" [disabled]="loading">
-              Request Ride
-            </button>
-          }
-
-          @if (rideStatus === 'requested') {
-            <div class="ride-info">
-              <p class="label">Ride ID</p>
-              <p class="value mono">{{ rideId }}</p>
-              <p class="label">Status</p>
-              <p class="status-badge requested">Requested — Waiting for Driver</p>
-            </div>
-            <button class="btn btn-danger" (click)="cancelRide()" [disabled]="loading">
-              Cancel Ride
-            </button>
-          }
-
-          @if (rideStatus === 'started') {
-            <div class="ride-info">
-              <p class="label">Ride ID</p>
-              <p class="value mono">{{ rideId }}</p>
-              <p class="status-badge started">Ride in Progress</p>
-            </div>
-          }
-
-          @if (rideStatus === 'completed') {
-            <div class="ride-info">
-              <p class="label">Ride Completed</p>
-              <p class="status-badge completed">Ride Completed</p>
-              <div class="payment-summary">
-                <p class="payment-label">Amount Due</p>
-                <p class="payment-amount">{{ fareCurrency }} {{ fareAmount | number:'1.2-2' }}</p>
-              </div>
-            </div>
-
-            <div class="simulate-group">
-              <label>Simulate Failure
-                <select [(ngModel)]="simulateFailure">
-                  <option value="none">None</option>
-                  <option value="payment">Payment Failure</option>
-                  <option value="payout">Payout Failure</option>
-                </select>
-              </label>
-            </div>
-
-            <button class="btn btn-pay" (click)="completePayment()" [disabled]="loading">
-              💳 Complete Payment
-            </button>
-          }
+        @if (rideStatus === 'idle' || rideStatus === 'cancelled') {
+          <div class="form-group">
+            <label>Fare Amount
+              <input type="number" [(ngModel)]="fareAmount" />
+            </label>
+            <label>Currency
+              <input [(ngModel)]="fareCurrency" />
+            </label>
+          </div>
 
           @if (rideStatus === 'cancelled') {
             <p class="status-badge cancelled">Ride Cancelled</p>
-            <button class="btn btn-sm" (click)="resetRide()">Start Over</button>
-          }
-        </div>
-      }
-
-      <!-- DRIVER TAB -->
-      @if (activeTab === 'driver') {
-        <div class="card">
-          <h3>Current Ride</h3>
-
-          @if (!rideId || rideStatus === 'idle') {
-            <p class="empty-state">No active ride. Ask rider to request a ride first.</p>
           }
 
-          @if (rideStatus === 'requested') {
-            <div class="ride-info">
-              <p class="label">Ride ID</p>
-              <p class="value mono">{{ rideId }}</p>
-              <p class="status-badge requested">Passenger Waiting</p>
+          <button class="btn btn-primary" (click)="requestRide()" [disabled]="loading">
+            Request Ride
+          </button>
+        }
+
+        @if (rideStatus === 'requested') {
+          <div class="ride-info">
+            <div class="info-row">
+              <span class="label">Ride ID</span>
+              <span class="value mono">{{ rideId }}</span>
             </div>
-            <button class="btn btn-success" (click)="startRide()" [disabled]="loading">
-              Start Ride
-            </button>
-          }
-
-          @if (rideStatus === 'started') {
-            <div class="ride-info">
-              <p class="label">Ride ID</p>
-              <p class="value mono">{{ rideId }}</p>
-              <p class="status-badge started">Ride in Progress</p>
+            <div class="info-row">
+              <span class="label">Driver</span>
+              <span class="value">{{ driverName }}</span>
             </div>
-            <button class="btn btn-primary" (click)="completeRide()" [disabled]="loading">
-              Complete Ride
+            <div class="info-row">
+              <span class="label">Fare</span>
+              <span class="value">{{ fareCurrency }} {{ fareAmount | number:'1.2-2' }}</span>
+            </div>
+            <p class="status-badge requested">Waiting for Driver to Accept</p>
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-success" (click)="acceptRide()" [disabled]="loading">
+              Accept Ride (Driver)
             </button>
-          }
+            <button class="btn btn-danger" (click)="cancelRide()" [disabled]="loading">
+              Cancel Ride
+            </button>
+          </div>
+        }
 
-          @if (rideStatus === 'completed') {
-            <p class="status-badge completed">Ride Completed — Waiting for Payment</p>
-          }
+        @if (rideStatus === 'inprogress') {
+          <div class="ride-info">
+            <div class="info-row">
+              <span class="label">Ride ID</span>
+              <span class="value mono">{{ rideId }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Driver</span>
+              <span class="value">{{ driverName }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Fare</span>
+              <span class="value">{{ fareCurrency }} {{ fareAmount | number:'1.2-2' }}</span>
+            </div>
+            <p class="status-badge started">Ride In Progress</p>
+          </div>
+          <button class="btn btn-primary" (click)="completeRide()" [disabled]="loading">
+            Complete Ride
+          </button>
+        }
 
-          @if (rideStatus === 'cancelled') {
-            <p class="status-badge cancelled">Ride was Cancelled</p>
-          }
+        @if (rideStatus === 'completed') {
+          <div class="ride-info">
+            <div class="info-row">
+              <span class="label">Driver</span>
+              <span class="value">{{ driverName }}</span>
+            </div>
+            <p class="status-badge completed">Ride Completed</p>
+            <div class="payment-summary">
+              <p class="payment-label">Amount Due</p>
+              <p class="payment-amount">{{ fareCurrency }} {{ fareAmount | number:'1.2-2' }}</p>
+            </div>
+          </div>
+
+          <div class="simulate-group">
+            <label>Simulate Failure
+              <select [(ngModel)]="simulateFailure">
+                <option value="none">None</option>
+                <option value="payment">Payment Failure</option>
+                <option value="payout">Payout Failure</option>
+              </select>
+            </label>
+          </div>
+
+          <button class="btn btn-pay" (click)="completePayment()" [disabled]="loading">
+            Complete Payment
+          </button>
+        }
+      </div>
+
+      <!-- Active Rides List -->
+      <div class="card active-rides-card">
+        <div class="card-header">
+          <h3>Active Rides</h3>
+          <button class="btn btn-sm" (click)="loadActiveRides()" [disabled]="loadingRides">Refresh</button>
         </div>
-      }
+
+        @if (loadingRides) {
+          <p class="empty-state">Loading...</p>
+        } @else if (activeRides.length === 0) {
+          <p class="empty-state">No active rides.</p>
+        } @else {
+          <div class="rides-list">
+            @for (ride of activeRides; track ride.rideId) {
+              <div class="ride-row">
+                <div class="ride-row-main">
+                  <div class="ride-row-info">
+                    <span class="ride-driver">{{ ride.driverName }}</span>
+                    <span class="ride-fare">{{ ride.fareCurrency }} {{ ride.fareAmount | number:'1.2-2' }}</span>
+                  </div>
+                  <span class="status-badge {{ ride.status.toLowerCase() }}">{{ statusLabel(ride.status) }}</span>
+                </div>
+
+                <div class="ride-row-actions">
+                  @if (ride.status === 'Requested') {
+                    <button class="btn btn-sm btn-action-success"
+                            (click)="acceptRideFromList(ride)"
+                            [disabled]="isRideLoading(ride.rideId)">
+                      Accept
+                    </button>
+                    <button class="btn btn-sm btn-action-danger"
+                            (click)="cancelRideFromList(ride)"
+                            [disabled]="isRideLoading(ride.rideId)">
+                      Cancel
+                    </button>
+                  }
+
+                  @if (ride.status === 'InProgress') {
+                    <button class="btn btn-sm btn-action-primary"
+                            (click)="completeRideFromList(ride)"
+                            [disabled]="isRideLoading(ride.rideId)">
+                      Complete
+                    </button>
+                  }
+
+                  @if (ride.status === 'Completed') {
+                    <select class="simulate-select"
+                            [(ngModel)]="simulateFailurePerRide[ride.rideId]">
+                      <option value="none">No failure</option>
+                      <option value="payment">Payment fail</option>
+                      <option value="payout">Payout fail</option>
+                    </select>
+                    <button class="btn btn-sm btn-action-pay"
+                            (click)="payRideFromList(ride)"
+                            [disabled]="isRideLoading(ride.rideId)">
+                      Pay
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
     </div>
 
-    <!-- RIGHT: Timeline panel -->
+    <!-- RIGHT: Transaction Timeline -->
     <div class="panel">
       <div class="card timeline-card">
         <h3>Transaction Timeline</h3>

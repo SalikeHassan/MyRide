@@ -12,12 +12,14 @@ public class StartRideCommand
     public double PickupLng { get; }
     public double DropoffLat { get; }
     public double DropoffLng { get; }
+    public string DriverName { get; }
 
     public StartRideCommand(
         Guid rideId,
         string tenantId,
         Guid riderId,
         Guid driverId,
+        string driverName,
         decimal fareAmount,
         string fareCurrency,
         double pickupLat,
@@ -29,6 +31,7 @@ public class StartRideCommand
         TenantId = tenantId;
         RiderId = riderId;
         DriverId = driverId;
+        DriverName = driverName;
         FareAmount = fareAmount;
         FareCurrency = fareCurrency;
         PickupLat = pickupLat;

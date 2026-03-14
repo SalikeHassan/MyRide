@@ -31,6 +31,7 @@ builder.Services.AddCors(options =>
 var ridesApiUrl = builder.Configuration["DownstreamServices:RidesApi"]!;
 var paymentsApiUrl = builder.Configuration["DownstreamServices:PaymentsApi"]!;
 var payoutsApiUrl = builder.Configuration["DownstreamServices:PayoutsApi"]!;
+var driversApiUrl = builder.Configuration["DownstreamServices:DriversApi"]!;
 
 // Refit clients with resilience pipeline
 builder.Services
@@ -47,6 +48,11 @@ builder.Services
     .AddRefitClient<IPayoutsApi>()
     .ConfigureHttpClient(c => c.BaseAddress = new Uri(payoutsApiUrl))
     .AddResilienceHandler("payouts-resilience", ConfigureResilience);
+
+builder.Services
+    .AddRefitClient<IDriversApi>()
+    .ConfigureHttpClient(c => c.BaseAddress = new Uri(driversApiUrl))
+    .AddResilienceHandler("drivers-resilience", ConfigureResilience);
 
 var app = builder.Build();
 
@@ -83,6 +89,6 @@ static void ConfigureResilience(ResiliencePipelineBuilder<HttpResponseMessage> p
         SamplingDuration = TimeSpan.FromSeconds(30),
         FailureRatio = 0.5,
         MinimumThroughput = 5,
-        BreakDuration = TimeSpan.FromSeconds(15)
+        BreakDuration = TimeSpan.FromSeconds(5)
     });
 }

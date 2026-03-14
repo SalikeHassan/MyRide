@@ -39,6 +39,8 @@ public class CompleteRideHandler
             RiderId = ride.RiderId,
             DriverId = ride.DriverId,
             Status = ride.Status,
+            FareAmount = ride.Fare.Amount,
+            FareCurrency = ride.Fare.Currency,
             LastUpdatedOn = DateTime.UtcNow
         });
 

@@ -1,5 +1,9 @@
+using System.Text.Json.Serialization;
 using Asp.Versioning;
 using Azure.Messaging.ServiceBus;
+using Drivers.Infrastructure;
+using Drivers.Infrastructure.Repositories;
+using Microsoft.EntityFrameworkCore;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Serializers;
@@ -20,7 +24,9 @@ public class Program
 
         var builder = WebApplication.CreateBuilder(args);
 
-        builder.Services.AddControllers();
+        builder.Services.AddControllers()
+            .AddJsonOptions(options =>
+                options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
         builder.Services.AddOpenApi();
 
         builder.Services.AddApiVersioning(options =>
@@ -30,13 +36,20 @@ public class Program
             options.ReportApiVersions = true;
         }).AddMvc();
 
-        // MongoDB
+        // MongoDB (write side — event store only)
         var mongoConnectionString = builder.Configuration["MongoDB:ConnectionString"]!;
         var mongoDatabaseName = builder.Configuration["MongoDB:DatabaseName"]!;
 
         builder.Services.AddSingleton<IMongoClient>(_ => new MongoClient(mongoConnectionString));
         builder.Services.AddSingleton<IMongoDatabase>(sp =>
             sp.GetRequiredService<IMongoClient>().GetDatabase(mongoDatabaseName));
+
+        // SQL Server (read side)
+        var readDbConnectionString = builder.Configuration.GetConnectionString("ReadDb")
+            ?? throw new InvalidOperationException("ReadDb connection string is missing.");
+
+        builder.Services.AddDbContext<ReadDbContext>(options =>
+            options.UseSqlServer(readDbConnectionString));
 
         // Service Bus
         var serviceBusConnectionString = builder.Configuration["ServiceBus:ConnectionString"]!;
@@ -49,11 +62,12 @@ public class Program
         // Rides
         builder.Services.AddScoped<IRideEventStore, MongoRideEventStore>();
         builder.Services.AddScoped<IRideEventPublisher, RideEventPublisher>();
-        builder.Services.AddScoped<IRideReadStore, MongoRideReadStore>();
+        builder.Services.AddScoped<IRideReadStore, SqlRideReadStore>();
         builder.Services.AddScoped<StartRideHandler>();
         builder.Services.AddScoped<AcceptRideHandler>();
         builder.Services.AddScoped<CompleteRideHandler>();
         builder.Services.AddScoped<CancelRideHandler>();
+        builder.Services.AddScoped<GetActiveRidesHandler>();
 
         var app = builder.Build();
 

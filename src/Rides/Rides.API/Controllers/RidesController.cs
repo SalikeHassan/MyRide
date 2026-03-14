@@ -14,17 +14,28 @@ namespace Rides.API.Controllers;
       private readonly AcceptRideHandler acceptRideHandler;
       private readonly CompleteRideHandler completeRideHandler;
       private readonly CancelRideHandler cancelRideHandler;
+      private readonly GetActiveRidesHandler getActiveRidesHandler;
 
       public RidesController(
           StartRideHandler startRideHandler,
           AcceptRideHandler acceptRideHandler,
           CompleteRideHandler completeRideHandler,
-          CancelRideHandler cancelRideHandler)
+          CancelRideHandler cancelRideHandler,
+          GetActiveRidesHandler getActiveRidesHandler)
       {
           this.startRideHandler = startRideHandler;
           this.acceptRideHandler = acceptRideHandler;
           this.completeRideHandler = completeRideHandler;
           this.cancelRideHandler = cancelRideHandler;
+          this.getActiveRidesHandler = getActiveRidesHandler;
+      }
+
+      [HttpGet("active")]
+      public async Task<IActionResult> GetActiveRides(
+          [FromHeader(Name = "X-Tenant-Id")] string tenantId)
+      {
+          var rides = await getActiveRidesHandler.HandleAsync(tenantId);
+          return Ok(rides);
       }
 
       [HttpPost("start")]
@@ -37,6 +48,7 @@ namespace Rides.API.Controllers;
               tenantId,
               request.RiderId,
               request.DriverId,
+              request.DriverName,
               request.FareAmount,
               request.FareCurrency,
               request.PickupLat,
@@ -90,6 +102,7 @@ namespace Rides.API.Controllers;
   public record StartRideRequest(
       Guid RiderId,
       Guid DriverId,
+      string DriverName,
       decimal FareAmount,
       string FareCurrency,
       double PickupLat,

@@ -255,3 +255,4 @@ Mongo db
   2. Azure Service Bus Emulator
  docker run -d --name myride-servicebus -p 5672:5672 -e ACCEPT_EULA=Y -e SQL_SERVER=host.docker.internal -e MSSQL_SA_PASSWORD=MyRide@123 -v /Users/salikehassan/Projects/MultiTenantApp/MyRide/servicebus/config.json:/ServiceBus_Emulator/ConfigFiles/Config.json mcr.microsoft.com/azure-messaging/servicebus-emulator:latest 
 
+docker run -e 'ACCEPT_EULA=Y' -e 'MSSQL_SA_PASSWORD=MyRide@2024!' -p 1433:1433 --name myride-sql -d mcr.microsoft.com/azure-sql-edge

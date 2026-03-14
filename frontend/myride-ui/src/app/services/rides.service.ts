@@ -3,9 +3,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 
-export interface StartRideRequest {
-  riderId: string;
-  driverId: string;
+export interface RequestRideRequest {
   fareAmount: number;
   fareCurrency: string;
   pickupLat: number;
@@ -14,9 +12,24 @@ export interface StartRideRequest {
   dropoffLng: number;
 }
 
-export interface RideResponse {
+export interface StartRideResponse {
   rideId: string;
+  riderId: string;
+  driverId: string;
+  driverName: string;
   message: string;
+}
+
+export interface ActiveRide {
+  rideId: string;
+  tenantId: string;
+  riderId: string;
+  driverId: string;
+  driverName: string;
+  status: string;
+  fareAmount: number;
+  fareCurrency: string;
+  lastUpdatedOn: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -29,8 +42,8 @@ export class RidesService {
     return new HttpHeaders({ 'X-Tenant-Id': tenantId });
   }
 
-  startRide(request: StartRideRequest, tenantId: string): Observable<RideResponse> {
-    return this.http.post<RideResponse>(`${this.baseUrl}/start`, request, { headers: this.headers(tenantId) });
+  startRide(request: RequestRideRequest, tenantId: string): Observable<StartRideResponse> {
+    return this.http.post<StartRideResponse>(`${this.baseUrl}/start`, request, { headers: this.headers(tenantId) });
   }
 
   acceptRide(rideId: string, tenantId: string): Observable<any> {
@@ -43,5 +56,9 @@ export class RidesService {
 
   cancelRide(rideId: string, reason: string, tenantId: string): Observable<any> {
     return this.http.post(`${this.baseUrl}/${rideId}/cancel`, { reason }, { headers: this.headers(tenantId) });
+  }
+
+  getActiveRides(tenantId: string): Observable<ActiveRide[]> {
+    return this.http.get<ActiveRide[]>(`${this.baseUrl}/active`, { headers: this.headers(tenantId) });
   }
 }

@@ -3,6 +3,12 @@
     <Project Path="src/MyRide.API/MyRide.API.csproj" />
     <Project Path="src/SharedKernel/SharedKernel.csproj" />
   </Folder>
+  <Folder Name="/src/Drivers/">
+    <Project Path="src/Drivers.API/Drivers.API.csproj" />
+    <Project Path="src/Drivers.Application/Drivers.Application.csproj" />
+    <Project Path="src/Drivers.Domain/Drivers.Domain.csproj" />
+    <Project Path="src/Drivers.Infrastructure/Drivers.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/src/Payments/">
     <Project Path="src/Payments.API/Payments.API.csproj" />
     <Project Path="src/Payments.Application/Payments.Application.csproj" />

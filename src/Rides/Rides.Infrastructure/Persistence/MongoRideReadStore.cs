@@ -54,6 +54,11 @@ public class MongoRideReadStore : IRideReadStore
         await collection.ReplaceOneAsync(filter, readModel, options);
     }
 
+    public Task<List<RideReadModel>> GetActiveRidesAsync(string tenantId)
+    {
+        throw new NotSupportedException("GetActiveRidesAsync is not supported on the Mongo read store. Use the SQL read store.");
+    }
+
     private IMongoCollection<RideReadModel> GetCollection(string tenantId)
     {
         return database.GetCollection<RideReadModel>($"{tenantId}_rides_readmodel");
