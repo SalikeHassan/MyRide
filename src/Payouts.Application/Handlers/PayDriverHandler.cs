@@ -1,10 +1,11 @@
+using Common.Application;
 using Payouts.Application.Ports;
 using Payouts.Domain.Aggregates;
 using Payouts.Domain.Commands;
 
 namespace Payouts.Application.Handlers;
 
-public class PayDriverHandler
+public class PayDriverHandler : ICommandHandler<PayDriverCommand>
 {
     private readonly IPayoutEventStore eventStore;
     private readonly IPayoutEventPublisher eventPublisher;
@@ -15,15 +16,15 @@ public class PayDriverHandler
         this.eventPublisher = eventPublisher;
     }
 
-    public async Task HandleAsync(PayDriverCommand command)
+    public async Task Handle(PayDriverCommand command)
     {
         var payout = PayoutAggregate.Pay(command);
 
-        await eventStore.AppendAsync(payout);
+        await eventStore.Append(payout);
 
         foreach (var domainEvent in payout.DomainEvents)
         {
-            await eventPublisher.PublishAsync(domainEvent);
+            await eventPublisher.Publish(domainEvent);
         }
 
         payout.ClearDomainEvents();

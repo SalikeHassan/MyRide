@@ -1,6 +1,8 @@
+using Common.Domain;
+
 namespace Rides.Domain.Commands;
 
-public class CompleteRideCommand
+public class CompleteRideCommand : ICommand
 {
     public Guid RideId { get; }
     public string TenantId { get; }

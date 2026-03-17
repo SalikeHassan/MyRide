@@ -1,13 +1,8 @@
 using System.Text.Json.Serialization;
 using Asp.Versioning;
 using Azure.Messaging.ServiceBus;
-using Drivers.Infrastructure;
-using Drivers.Infrastructure.Repositories;
+using EventStore.Client;
 using Microsoft.EntityFrameworkCore;
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization;
-using MongoDB.Bson.Serialization.Serializers;
-using MongoDB.Driver;
 using Rides.Application.Handlers;
 using Rides.Application.Ports;
 using Rides.Infrastructure.Messaging;
@@ -20,8 +15,6 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        BsonSerializer.RegisterSerializer(new GuidSerializer(GuidRepresentation.Standard));
-
         var builder = WebApplication.CreateBuilder(args);
 
         builder.Services.AddControllers()
@@ -36,19 +29,17 @@ public class Program
             options.ReportApiVersions = true;
         }).AddMvc();
 
-        // MongoDB (write side — event store only)
-        var mongoConnectionString = builder.Configuration["MongoDB:ConnectionString"]!;
-        var mongoDatabaseName = builder.Configuration["MongoDB:DatabaseName"]!;
+        // EventStoreDB
+        var eventStoreConnectionString = builder.Configuration["EventStoreDb:ConnectionString"]!;
 
-        builder.Services.AddSingleton<IMongoClient>(_ => new MongoClient(mongoConnectionString));
-        builder.Services.AddSingleton<IMongoDatabase>(sp =>
-            sp.GetRequiredService<IMongoClient>().GetDatabase(mongoDatabaseName));
+        builder.Services.AddSingleton(new EventStoreClient(
+            EventStoreClientSettings.Create(eventStoreConnectionString)));
 
         // SQL Server (read side)
         var readDbConnectionString = builder.Configuration.GetConnectionString("ReadDb")
             ?? throw new InvalidOperationException("ReadDb connection string is missing.");
 
-        builder.Services.AddDbContext<ReadDbContext>(options =>
+        builder.Services.AddDbContext<RidesReadDbContext>(options =>
             options.UseSqlServer(readDbConnectionString));
 
         // Service Bus
@@ -60,8 +51,8 @@ public class Program
             sp.GetRequiredService<ServiceBusClient>().CreateSender(ridesTopic));
 
         // Rides
-        builder.Services.AddScoped<IRideEventStore, MongoRideEventStore>();
-        builder.Services.AddScoped<IRideEventPublisher, RideEventPublisher>();
+        builder.Services.AddScoped<IRideEventStore, EventStoreDbRideEventStore>();
+        builder.Services.AddScoped<IRideEventPublisher, NoOpRideEventPublisher>();
         builder.Services.AddScoped<IRideReadStore, SqlRideReadStore>();
         builder.Services.AddScoped<StartRideHandler>();
         builder.Services.AddScoped<AcceptRideHandler>();

@@ -4,6 +4,6 @@ namespace Rides.Application.Ports;
 
 public interface IRideEventStore
 {
-    Task AppendAsync(RideAggregate ride);
-    Task<RideAggregate> LoadAsync(Guid rideId, string tenantId);
+    Task Append(RideAggregate ride);
+    Task<RideAggregate> Load(Guid rideId, string tenantId);
 }

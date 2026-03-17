@@ -1,9 +1,10 @@
+using Common.Application;
 using Payments.Application.Ports;
 using Payments.Domain.Commands;
 
 namespace Payments.Application.Handlers;
 
-public class RefundRiderHandler
+public class RefundRiderHandler : ICommandHandler<RefundRiderCommand>
 {
     private readonly IPaymentEventStore eventStore;
     private readonly IPaymentEventPublisher eventPublisher;
@@ -15,18 +16,18 @@ public class RefundRiderHandler
         this.eventPublisher = eventPublisher;
     }
 
-    public async Task HandleAsync(RefundRiderCommand command)
+    public async Task Handle(RefundRiderCommand command)
     {
-        var payment = await eventStore.LoadAsync(command.PaymentId,
+        var payment = await eventStore.Load(command.PaymentId,
             command.TenantId);
 
         payment.Refund();
 
-        await eventStore.AppendAsync(payment);
+        await eventStore.Append(payment);
 
         foreach (var domainEvent in payment.DomainEvents)
         {
-            await eventPublisher.PublishAsync(domainEvent);
+            await eventPublisher.Publish(domainEvent);
         }
 
         payment.ClearDomainEvents();

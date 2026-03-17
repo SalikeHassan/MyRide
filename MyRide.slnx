@@ -1,7 +1,12 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Common.Application/Common.Application.csproj" />
+    <Project Path="src/Common.Domain/Common.Domain.csproj" />
+    <Project Path="src/Common.Infrastructure/Common.Infrastructure.csproj" />
     <Project Path="src/MyRide.API/MyRide.API.csproj" />
-    <Project Path="src/SharedKernel/SharedKernel.csproj" />
+    <Project Path="src/MyRide.Application/MyRide.Application.csproj" />
+    <Project Path="src/MyRide.Domain/MyRide.Domain.csproj" />
+    <Project Path="src/MyRide.Infrastructure/MyRide.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/src/Drivers/">
     <Project Path="src/Drivers.API/Drivers.API.csproj" />

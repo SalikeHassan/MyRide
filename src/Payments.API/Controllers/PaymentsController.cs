@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
+using Payments.API.Models.Requests;
 using Payments.Application.Handlers;
 using Payments.Domain.Commands;
 
@@ -35,7 +36,7 @@ public class PaymentsController : ControllerBase
             request.Currency,
             request.SimulateFailure);
 
-        await chargeRiderHandler.HandleAsync(command);
+        await chargeRiderHandler.Handle(command);
 
         return Ok(new { PaymentId = command.PaymentId, Message = "Rider charged." });
     }
@@ -46,17 +47,7 @@ public class PaymentsController : ControllerBase
         [FromHeader(Name = "X-Tenant-Id")] string tenantId)
     {
         var command = new RefundRiderCommand(paymentId, tenantId);
-
-        await refundRiderHandler.HandleAsync(command);
-
+        await refundRiderHandler.Handle(command);
         return Ok(new { paymentId, Message = "Rider refunded." });
     }
 }
-
-public record ChargeRiderRequest(
-    Guid PayerId,
-    Guid PayeeId,
-    decimal Amount,
-    string Currency,
-    bool SimulateFailure = false);
-

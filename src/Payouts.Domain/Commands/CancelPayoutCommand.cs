@@ -1,6 +1,8 @@
+using Common.Domain;
+
 namespace Payouts.Domain.Commands;
 
-public class CancelPayoutCommand
+public class CancelPayoutCommand : ICommand
 {
     public Guid PayoutId { get; }
     public string TenantId { get; }

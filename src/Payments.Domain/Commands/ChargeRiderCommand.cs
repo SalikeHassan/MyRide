@@ -1,6 +1,8 @@
+using Common.Domain;
+
 namespace Payments.Domain.Commands;
 
-public class ChargeRiderCommand
+public class ChargeRiderCommand : ICommand
 {
     public Guid PaymentId { get; }
     public string TenantId { get; }

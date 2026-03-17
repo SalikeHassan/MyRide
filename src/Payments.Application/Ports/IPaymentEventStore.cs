@@ -4,7 +4,7 @@ namespace Payments.Application.Ports;
 
 public interface IPaymentEventStore
 {
-    Task AppendAsync(PaymentAggregate payment);
-    Task<PaymentAggregate> LoadAsync(Guid paymentId, string 
+    Task Append(PaymentAggregate payment);
+    Task<PaymentAggregate> Load(Guid paymentId, string 
         tenantId);
 }

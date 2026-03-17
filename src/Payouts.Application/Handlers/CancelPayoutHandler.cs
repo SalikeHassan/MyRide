@@ -1,9 +1,10 @@
+using Common.Application;
 using Payouts.Application.Ports;
 using Payouts.Domain.Commands;
 
 namespace Payouts.Application.Handlers;
 
-public class CancelPayoutHandler
+public class CancelPayoutHandler : ICommandHandler<CancelPayoutCommand>
 {
     private readonly IPayoutEventStore eventStore;
     private readonly IPayoutEventPublisher eventPublisher;
@@ -14,17 +15,17 @@ public class CancelPayoutHandler
         this.eventPublisher = eventPublisher;
     }
 
-    public async Task HandleAsync(CancelPayoutCommand command)
+    public async Task Handle(CancelPayoutCommand command)
     {
-        var payout = await eventStore.LoadAsync(command.PayoutId, command.TenantId);
+        var payout = await eventStore.Load(command.PayoutId, command.TenantId);
 
         payout.Cancel(command.Reason);
 
-        await eventStore.AppendAsync(payout);
+        await eventStore.Append(payout);
 
         foreach (var domainEvent in payout.DomainEvents)
         {
-            await eventPublisher.PublishAsync(domainEvent);
+            await eventPublisher.Publish(domainEvent);
         }
 
         payout.ClearDomainEvents();

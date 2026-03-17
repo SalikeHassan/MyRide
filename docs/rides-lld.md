@@ -256,3 +256,11 @@ Mongo db
  docker run -d --name myride-servicebus -p 5672:5672 -e ACCEPT_EULA=Y -e SQL_SERVER=host.docker.internal -e MSSQL_SA_PASSWORD=MyRide@123 -v /Users/salikehassan/Projects/MultiTenantApp/MyRide/servicebus/config.json:/ServiceBus_Emulator/ConfigFiles/Config.json mcr.microsoft.com/azure-messaging/servicebus-emulator:latest 
 
 docker run -e 'ACCEPT_EULA=Y' -e 'MSSQL_SA_PASSWORD=MyRide@2024!' -p 1433:1433 --name myride-sql -d mcr.microsoft.com/azure-sql-edge
+
+docker run -d --name myride-eventstore \
+-p 2113:2113 \
+-e EVENTSTORE_CLUSTER_SIZE=1 \
+-e EVENTSTORE_RUN_PROJECTIONS=All \
+-e EVENTSTORE_START_STANDARD_PROJECTIONS=true \
+-e EVENTSTORE_INSECURE=true \
+eventstore/eventstore:latest

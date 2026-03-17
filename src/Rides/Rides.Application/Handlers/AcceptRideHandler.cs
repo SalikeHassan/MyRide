@@ -1,9 +1,10 @@
+using Common.Application;
 using Rides.Application.Ports;
 using Rides.Domain.Commands;
 
 namespace Rides.Application.Handlers;
 
-public class AcceptRideHandler
+public class AcceptRideHandler : ICommandHandler<AcceptRideCommand>
 {
     private readonly IRideEventStore eventStore;
     private readonly IRideEventPublisher eventPublisher;
@@ -19,30 +20,22 @@ public class AcceptRideHandler
         this.rideReadStore = rideReadStore;
     }
 
-    public async Task HandleAsync(AcceptRideCommand command)
+    public async Task Handle(AcceptRideCommand command)
     {
-        var ride = await eventStore.LoadAsync(command.RideId, command.TenantId);
+        var ride = await eventStore.Load(command.RideId, command.TenantId);
 
         ride.Accept();
 
-        await eventStore.AppendAsync(ride);
+        await eventStore.Append(ride);
 
         foreach (var domainEvent in ride.DomainEvents)
         {
-            await eventPublisher.PublishAsync(domainEvent);
+            await eventPublisher.Publish(domainEvent);
         }
 
-        await rideReadStore.UpsertAsync(new RideReadModel
-        {
-            RideId = ride.Id,
-            TenantId = ride.TenantId,
-            RiderId = ride.RiderId,
-            DriverId = ride.DriverId,
-            Status = ride.Status,
-            FareAmount = ride.Fare.Amount,
-            FareCurrency = ride.Fare.Currency,
-            LastUpdatedOn = DateTime.UtcNow
-        });
+        var readModel = await rideReadStore.GetById(ride.Id, ride.TenantId);
+        readModel!.Accept();
+        await rideReadStore.Upsert(readModel);
 
         ride.ClearDomainEvents();
     }

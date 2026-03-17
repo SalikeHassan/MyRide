@@ -3,7 +3,7 @@ using System.Text.Json;
 using Azure.Messaging.ServiceBus;
 using Microsoft.Extensions.DependencyInjection;
 using Payments.Application.Ports;
-using SharedKernel;
+using Common.Domain;
 
 namespace Payments.Infrastructure.Messaging;
 
@@ -17,7 +17,7 @@ public class PaymentEventPublisher : IPaymentEventPublisher
         this.sender = sender;
     }
 
-    public async Task PublishAsync(IDomainEvent domainEvent)
+    public async Task Publish(IDomainEvent domainEvent)
     {
         var payload = JsonSerializer.Serialize(domainEvent,
             domainEvent.GetType());

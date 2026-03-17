@@ -2,7 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Rides.Domain\Rides.Domain.csproj" />
-    <ProjectReference Include="..\..\SharedKernel\SharedKernel.csproj" />
+    <ProjectReference Include="..\..\Common.Application\Common.Application.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

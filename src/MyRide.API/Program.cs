@@ -1,13 +1,22 @@
+using System.Text.Json.Serialization;
 using Asp.Versioning;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Http.Resilience;
-using MyRide.API.Clients;
+using MyRide.Application.Ports;
+using MyRide.Application.Recovery;
+using MyRide.Application.Sagas;
+using MyRide.Infrastructure.Clients.Adapters;
+using MyRide.Infrastructure.Clients.Refit;
+using MyRide.Infrastructure.Persistence;
 using Polly;
 using Refit;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddOpenApi();
 
 builder.Services.AddApiVersioning(options =>
@@ -54,6 +63,30 @@ builder.Services
     .ConfigureHttpClient(c => c.BaseAddress = new Uri(driversApiUrl))
     .AddResilienceHandler("drivers-resilience", ConfigureResilience);
 
+// SQL Server (SAGA persistence)
+var connectionString = builder.Configuration.GetConnectionString("OrchestratorDb")
+    ?? throw new InvalidOperationException("OrchestratorDb connection string is missing.");
+
+builder.Services.AddDbContext<OrchestratorDbContext>(options =>
+    options.UseSqlServer(connectionString));
+
+// Downstream clients (adapters)
+builder.Services.AddScoped<IDownstreamDriversClient, DriversApiClient>();
+builder.Services.AddScoped<IDownstreamRidesClient, RidesApiClient>();
+builder.Services.AddScoped<IDownstreamPaymentsClient, PaymentsApiClient>();
+builder.Services.AddScoped<IDownstreamPayoutsClient, PayoutsApiClient>();
+
+// SAGA repositories
+builder.Services.AddScoped<IStartRideSagaRepository, SqlStartRideSagaRepository>();
+builder.Services.AddScoped<ICompleteRideSagaRepository, SqlCompleteRideSagaRepository>();
+
+// SAGAs
+builder.Services.AddScoped<StartRideSaga>();
+builder.Services.AddScoped<CompleteRideSaga>();
+
+// Recovery job
+builder.Services.AddHostedService<SagaRecoveryJob>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -71,10 +104,8 @@ app.Run();
 
 static void ConfigureResilience(ResiliencePipelineBuilder<HttpResponseMessage> pipeline)
 {
-    // 1. Overall timeout — cancel if entire operation exceeds 10s
     pipeline.AddTimeout(TimeSpan.FromSeconds(10));
 
-    // 2. Retry — 3 attempts with exponential backoff + jitter
     pipeline.AddRetry(new HttpRetryStrategyOptions
     {
         MaxRetryAttempts = 3,
@@ -83,7 +114,6 @@ static void ConfigureResilience(ResiliencePipelineBuilder<HttpResponseMessage> p
         UseJitter = true
     });
 
-    // 3. Circuit breaker — opens after 50% failure rate over 5+ calls in 30s
     pipeline.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
     {
         SamplingDuration = TimeSpan.FromSeconds(30),

@@ -8,6 +8,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Drivers.Domain\Drivers.Domain.csproj" />
+      <ProjectReference Include="..\Common.Application\Common.Application.csproj" />
     </ItemGroup>
 
 </Project>

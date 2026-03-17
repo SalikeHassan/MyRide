@@ -1,9 +1,6 @@
 using Asp.Versioning;
 using Azure.Messaging.ServiceBus;
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization;
-using MongoDB.Bson.Serialization.Serializers;
-using MongoDB.Driver;
+using EventStore.Client;
 using Payouts.Application.Handlers;
 using Payouts.Application.Ports;
 using Payouts.Infrastructure.Messaging;
@@ -16,8 +13,6 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        BsonSerializer.RegisterSerializer(new GuidSerializer(GuidRepresentation.Standard));
-
         var builder = WebApplication.CreateBuilder(args);
 
         builder.Services.AddControllers();
@@ -30,13 +25,11 @@ public class Program
             options.ReportApiVersions = true;
         }).AddMvc();
 
-        // MongoDB
-        var mongoConnectionString = builder.Configuration["MongoDB:ConnectionString"]!;
-        var mongoDatabaseName = builder.Configuration["MongoDB:DatabaseName"]!;
+        // EventStoreDB
+        var eventStoreConnectionString = builder.Configuration["EventStoreDb:ConnectionString"]!;
 
-        builder.Services.AddSingleton<IMongoClient>(_ => new MongoClient(mongoConnectionString));
-        builder.Services.AddSingleton<IMongoDatabase>(sp =>
-            sp.GetRequiredService<IMongoClient>().GetDatabase(mongoDatabaseName));
+        builder.Services.AddSingleton(new EventStoreClient(
+            EventStoreClientSettings.Create(eventStoreConnectionString)));
 
         // Service Bus
         var serviceBusConnectionString = builder.Configuration["ServiceBus:ConnectionString"]!;
@@ -47,7 +40,7 @@ public class Program
             sp.GetRequiredService<ServiceBusClient>().CreateSender(payoutsTopic));
 
         // Payouts
-        builder.Services.AddScoped<IPayoutEventStore, MongoPayoutEventStore>();
+        builder.Services.AddScoped<IPayoutEventStore, EventStoreDbPayoutEventStore>();
         builder.Services.AddScoped<IPayoutEventPublisher, PayoutEventPublisher>();
         builder.Services.AddScoped<PayDriverHandler>();
         builder.Services.AddScoped<CancelPayoutHandler>();

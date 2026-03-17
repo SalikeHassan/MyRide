@@ -1,8 +1,8 @@
-using SharedKernel;
+using Common.Domain;
 
 namespace Rides.Application.Ports;
 
 public interface IRideEventPublisher
 {
-    Task PublishAsync(IDomainEvent domainEvent);
+    Task Publish(IDomainEvent domainEvent);
 }

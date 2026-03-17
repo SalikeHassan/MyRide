@@ -1,7 +1,11 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
-using MyRide.API.Clients;
-using Refit;
+using MyRide.Application.Ports;
+using MyRide.Application.Sagas;
+using MyRide.Domain.Sagas;
+using MyRide.API.Models.Requests;
+using MyRide.Infrastructure.Clients.Refit;
+using MyRide.Infrastructure.Models;
 
 namespace MyRide.API.Controllers;
 
@@ -10,20 +14,28 @@ namespace MyRide.API.Controllers;
 [Route("api/v{version:apiVersion}/rides")]
 public class RidesController : ControllerBase
 {
+    private readonly StartRideSaga startRideSaga;
+    private readonly CompleteRideSaga completeRideSaga;
+    private readonly IDownstreamDriversClient driversClient;
     private readonly IRidesApi ridesApi;
-    private readonly IDriversApi driversApi;
 
-    public RidesController(IRidesApi ridesApi, IDriversApi driversApi)
+    public RidesController(
+        StartRideSaga startRideSaga,
+        CompleteRideSaga completeRideSaga,
+        IDownstreamDriversClient driversClient,
+        IRidesApi ridesApi)
     {
+        this.startRideSaga = startRideSaga;
+        this.completeRideSaga = completeRideSaga;
+        this.driversClient = driversClient;
         this.ridesApi = ridesApi;
-        this.driversApi = driversApi;
     }
 
     [HttpGet("active")]
     public async Task<IActionResult> GetActiveRides(
         [FromHeader(Name = "X-Tenant-Id")] string tenantId)
     {
-        var rides = await ridesApi.GetActiveRidesAsync(tenantId);
+        var rides = await ridesApi.GetActiveRides(tenantId);
         return Ok(rides);
     }
 
@@ -32,22 +44,20 @@ public class RidesController : ControllerBase
         [FromBody] RequestRideRequest request,
         [FromHeader(Name = "X-Tenant-Id")] string tenantId)
     {
-        AvailableDriverResponse driver;
+        var driver = await driversClient.GetAvailableDriver(tenantId);
 
-        try
-        {
-            driver = await driversApi.GetAvailableDriverAsync(tenantId);
-        }
-        catch (ApiException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        if (driver is null)
         {
             return Conflict(new { Message = "No drivers available. Please try again shortly." });
         }
 
         var riderId = Guid.NewGuid();
-        var downstreamRequest = new StartRideRequest(
-            riderId,
+
+        var saga = await startRideSaga.Execute(
             driver.Id,
+            riderId,
             driver.Name,
+            tenantId,
             request.FareAmount,
             request.FareCurrency,
             request.PickupLat,
@@ -55,9 +65,19 @@ public class RidesController : ControllerBase
             request.DropoffLat,
             request.DropoffLng);
 
-        var response = await ridesApi.StartRideAsync(downstreamRequest, tenantId);
+        if (saga.Status != StartRideSagaStatus.Completed)
+        {
+            return StatusCode(503, new { Message = "Ride could not be started. Please try again.", saga.Status });
+        }
 
-        return Ok(new { response.RideId, RiderId = riderId, DriverId = driver.Id, DriverName = driver.Name, response.Message });
+        return Ok(new
+        {
+            saga.RideId,
+            RiderId = riderId,
+            DriverId = driver.Id,
+            DriverName = driver.Name,
+            Message = "Ride started."
+        });
     }
 
     [HttpPost("{rideId:guid}/accept")]
@@ -65,7 +85,7 @@ public class RidesController : ControllerBase
         Guid rideId,
         [FromHeader(Name = "X-Tenant-Id")] string tenantId)
     {
-        await ridesApi.AcceptRideAsync(rideId, tenantId);
+        await ridesApi.AcceptRide(rideId, tenantId);
         return Ok(new { rideId, Message = "Ride accepted by driver." });
     }
 
@@ -74,8 +94,14 @@ public class RidesController : ControllerBase
         Guid rideId,
         [FromHeader(Name = "X-Tenant-Id")] string tenantId)
     {
-        await ridesApi.CompleteRideAsync(rideId, tenantId);
-        return Ok(new { rideId, Message = "Ride completed." });
+        var saga = await completeRideSaga.Execute(rideId, tenantId);
+
+        if (saga.Status == CompleteRideSagaStatus.Completed)
+        {
+            return Ok(new { rideId, Message = "Ride completed." });
+        }
+
+        return Ok(new { rideId, saga.Status, Message = "Ride completed. Some downstream steps are pending." });
     }
 
     [HttpPost("{rideId:guid}/cancel")]
@@ -84,10 +110,15 @@ public class RidesController : ControllerBase
         [FromBody] CancelActionRequest request,
         [FromHeader(Name = "X-Tenant-Id")] string tenantId)
     {
-        await ridesApi.CancelRideAsync(rideId, new CancelRideRequest(request.Reason), tenantId);
+        var ride = await ridesApi.GetRide(rideId, tenantId);
+
+        await ridesApi.CancelRide(rideId, new CancelRideRequest(request.Reason), tenantId);
+
+        if (ride is not null)
+        {
+            await driversClient.FreeDriver(ride.DriverId, rideId, tenantId);
+        }
+
         return Ok(new { rideId, Message = "Ride cancelled." });
     }
 }
-
-public record RequestRideRequest(decimal FareAmount, string FareCurrency, double PickupLat, double PickupLng, double DropoffLat, double DropoffLng);
-public record CancelActionRequest(string Reason);

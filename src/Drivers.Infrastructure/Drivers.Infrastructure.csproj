@@ -8,10 +8,12 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Drivers.Application\Drivers.Application.csproj" />
-      <ProjectReference Include="..\Rides\Rides.Application\Rides.Application.csproj" />
+      <ProjectReference Include="..\Common.Infrastructure\Common.Infrastructure.csproj" />
     </ItemGroup>
 
     <ItemGroup>
+      <PackageReference Include="EventStore.Client.Grpc.Streams" Version="23.3.1" />
+      <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.0" />
       <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.5">
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

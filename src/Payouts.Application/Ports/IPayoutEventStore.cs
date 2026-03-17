@@ -4,6 +4,6 @@ namespace Payouts.Application.Ports;
 
 public interface IPayoutEventStore                        
 {
-    Task AppendAsync(PayoutAggregate payout);
-    Task<PayoutAggregate> LoadAsync(Guid payoutId, string tenantId);
+    Task Append(PayoutAggregate payout);
+    Task<PayoutAggregate> Load(Guid payoutId, string tenantId);
 }

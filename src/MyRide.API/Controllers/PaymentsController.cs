@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
-using MyRide.API.Clients;
+using MyRide.Infrastructure.Clients.Refit;
+using MyRide.Infrastructure.Models;
 
 namespace MyRide.API.Controllers;
 
@@ -21,7 +22,7 @@ public class PaymentsController : ControllerBase
         [FromBody] ChargeRiderRequest request,
         [FromHeader(Name = "X-Tenant-Id")] string tenantId)
     {
-        var response = await paymentsApi.ChargeRiderAsync(request, tenantId);
+        var response = await paymentsApi.ChargeRider(request, tenantId);
         return Ok(response);
     }
 
@@ -30,7 +31,7 @@ public class PaymentsController : ControllerBase
         Guid paymentId,
         [FromHeader(Name = "X-Tenant-Id")] string tenantId)
     {
-        await paymentsApi.RefundRiderAsync(paymentId, tenantId);
+        await paymentsApi.RefundRider(paymentId, tenantId);
         return Ok(new { paymentId, Message = "Rider refunded." });
     }
 }

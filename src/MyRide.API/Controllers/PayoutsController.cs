@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
-using MyRide.API.Clients;
+using MyRide.Infrastructure.Clients.Refit;
+using MyRide.Infrastructure.Models;
 
 namespace MyRide.API.Controllers;
 
@@ -21,7 +22,7 @@ public class PayoutsController : ControllerBase
         [FromBody] PayDriverRequest request,
         [FromHeader(Name = "X-Tenant-Id")] string tenantId)
     {
-        await payoutsApi.PayDriverAsync(request, tenantId);
+        await payoutsApi.PayDriver(request, tenantId);
         return Ok(new { Message = "Driver paid." });
     }
 
@@ -31,7 +32,7 @@ public class PayoutsController : ControllerBase
         [FromBody] CancelPayoutRequest request,
         [FromHeader(Name = "X-Tenant-Id")] string tenantId)
     {
-        await payoutsApi.CancelPayoutAsync(payoutId, request, tenantId);
+        await payoutsApi.CancelPayout(payoutId, request, tenantId);
         return Ok(new { payoutId, Message = "Payout cancelled." });
     }
 }

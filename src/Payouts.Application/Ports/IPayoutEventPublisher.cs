@@ -1,8 +1,8 @@
-using SharedKernel;
+using Common.Domain;
 
 namespace Payouts.Application.Ports;
 
 public interface IPayoutEventPublisher
 {
-    Task PublishAsync(IDomainEvent domainEvent);
+    Task Publish(IDomainEvent domainEvent);
 }

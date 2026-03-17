@@ -1,6 +1,8 @@
+using Common.Domain;
+
 namespace Payouts.Domain.Commands;
 
-public class PayDriverCommand
+public class PayDriverCommand : ICommand
 {
     public Guid PayoutId { get; }
     public string TenantId { get; }

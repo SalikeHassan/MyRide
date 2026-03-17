@@ -1,4 +1,4 @@
-using SharedKernel;
+using Common.Domain;
 using Rides.Domain.Commands;
 using Rides.Domain.Events;
 using Rides.Domain.ValueObjects;

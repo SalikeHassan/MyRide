@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
+using Payouts.API.Models.Requests;
 using Payouts.Application.Handlers;
 using Payouts.Domain.Commands;
 
@@ -34,7 +35,7 @@ public class PayoutsController : ControllerBase
             request.Currency,
             request.SimulateFailure);
 
-        await payDriverHandler.HandleAsync(command);
+        await payDriverHandler.Handle(command);
 
         return Ok(new { Message = "Driver paid." });
     }
@@ -46,17 +47,7 @@ public class PayoutsController : ControllerBase
         [FromHeader(Name = "X-Tenant-Id")] string tenantId)
     {
         var command = new CancelPayoutCommand(payoutId, tenantId, request.Reason);
-
-        await cancelPayoutHandler.HandleAsync(command);
-
+        await cancelPayoutHandler.Handle(command);
         return Ok(new { payoutId, Message = "Payout cancelled." });
     }
 }
-
-public record PayDriverRequest(
-    Guid RecipientId,
-    decimal Amount,
-    string Currency,
-    bool SimulateFailure = false);
-
-public record CancelPayoutRequest(string Reason);

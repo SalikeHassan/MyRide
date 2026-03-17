@@ -1,7 +1,7 @@
 using Payments.Domain.Commands;
 using Payments.Domain.Events;
 using Payments.Domain.ValueObjects;
-using SharedKernel;
+using Common.Domain;
 
 namespace Payments.Domain.Aggregate;
 

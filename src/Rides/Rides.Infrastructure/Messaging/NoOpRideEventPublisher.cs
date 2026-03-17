@@ -1,11 +1,11 @@
 using Rides.Application.Ports;
-using SharedKernel;
+using Common.Domain;
 
 namespace Rides.Infrastructure.Messaging;
 
 public class NoOpRideEventPublisher : IRideEventPublisher
 {
-    public Task PublishAsync(IDomainEvent domainEvent)
+    public Task Publish(IDomainEvent domainEvent)
     {
         return Task.CompletedTask;
     }

@@ -3,7 +3,7 @@ using System.Text.Json;
 using Azure.Messaging.ServiceBus;
 using Microsoft.Extensions.DependencyInjection;
 using Rides.Application.Ports;
-using SharedKernel;
+using Common.Domain;
 
 namespace Rides.Infrastructure.Messaging;
 
@@ -16,7 +16,7 @@ public class RideEventPublisher : IRideEventPublisher
         this.sender = sender;
     }
 
-    public async Task PublishAsync(IDomainEvent domainEvent)
+    public async Task Publish(IDomainEvent domainEvent)
     {
         var payload = JsonSerializer.Serialize(domainEvent, domainEvent.GetType());
 

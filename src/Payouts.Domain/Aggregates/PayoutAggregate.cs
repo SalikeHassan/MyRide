@@ -1,7 +1,7 @@
 using Payouts.Domain.Commands;
 using Payouts.Domain.Events;
 using Payouts.Domain.ValueObjects;
-using SharedKernel;
+using Common.Domain;
 
 namespace Payouts.Domain.Aggregates;
 

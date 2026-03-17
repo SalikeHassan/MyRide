@@ -1,8 +1,11 @@
+using Common.Application;
 using Rides.Application.Ports;
+using Rides.Application.Queries;
+using Rides.Domain.ReadModels;
 
 namespace Rides.Application.Handlers;
 
-public class GetActiveRidesHandler
+public class GetActiveRidesHandler : IQueryHandler<GetActiveRidesQuery, List<RideReadModel>>
 {
     private readonly IRideReadStore rideReadStore;
 
@@ -11,8 +14,13 @@ public class GetActiveRidesHandler
         this.rideReadStore = rideReadStore;
     }
 
-    public async Task<List<RideReadModel>> HandleAsync(string tenantId)
+    public async Task<List<RideReadModel>> Handle(GetActiveRidesQuery query)
     {
-        return await rideReadStore.GetActiveRidesAsync(tenantId);
+        return await rideReadStore.GetActiveRides(query.TenantId);
+    }
+
+    public async Task<RideReadModel?> GetById(Guid rideId, string tenantId)
+    {
+        return await rideReadStore.GetById(rideId, tenantId);
     }
 }

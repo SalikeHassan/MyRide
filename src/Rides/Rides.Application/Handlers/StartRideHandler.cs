@@ -1,10 +1,12 @@
+using Common.Application;
 using Rides.Application.Ports;
 using Rides.Domain.Aggregates;
 using Rides.Domain.Commands;
+using Rides.Domain.ReadModels;
 
 namespace Rides.Application.Handlers;
 
-public class StartRideHandler
+public class StartRideHandler : ICommandHandler<StartRideCommand>
 {
     private readonly IRideEventStore eventStore;
     private readonly IRideEventPublisher eventPublisher;
@@ -20,43 +22,32 @@ public class StartRideHandler
         this.rideReadStore = rideReadStore;
     }
 
-    public async Task HandleAsync(StartRideCommand command)
+    public async Task Handle(StartRideCommand command)
     {
-        var riderHasActiveRide = await rideReadStore.HasActiveRideForRiderAsync(command.RiderId, command.TenantId);
+        var riderHasActiveRide = await rideReadStore.HasActiveRideForRider(command.RiderId, command.TenantId);
 
         if (riderHasActiveRide)
         {
             throw new InvalidOperationException($"Rider {command.RiderId} already has an active ride.");
         }
 
-        var driverHasActiveRide = await rideReadStore.HasActiveRideForDriverAsync(command.DriverId, command.TenantId);
-
-        if (driverHasActiveRide)
-        {
-            throw new InvalidOperationException($"Driver {command.DriverId} already has an active ride.");
-        }
-
         var ride = RideAggregate.Start(command);
 
-        await eventStore.AppendAsync(ride);
+        await eventStore.Append(ride);
 
         foreach (var domainEvent in ride.DomainEvents)
         {
-            await eventPublisher.PublishAsync(domainEvent);
+            await eventPublisher.Publish(domainEvent);
         }
 
-        await rideReadStore.UpsertAsync(new RideReadModel
-        {
-            RideId = ride.Id,
-            TenantId = ride.TenantId,
-            RiderId = ride.RiderId,
-            DriverId = ride.DriverId,
-            DriverName = command.DriverName,
-            Status = ride.Status,
-            FareAmount = ride.Fare.Amount,
-            FareCurrency = ride.Fare.Currency,
-            LastUpdatedOn = DateTime.UtcNow
-        });
+        await rideReadStore.Upsert(RideReadModel.Create(
+            ride.Id,
+            ride.TenantId,
+            ride.RiderId,
+            ride.DriverId,
+            command.DriverName,
+            ride.Fare.Amount,
+            ride.Fare.Currency));
 
         ride.ClearDomainEvents();
     }

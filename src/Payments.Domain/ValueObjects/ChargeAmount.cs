@@ -1,4 +1,4 @@
-using SharedKernel;
+using Common.Domain;
 
 namespace Payments.Domain.ValueObjects;
 

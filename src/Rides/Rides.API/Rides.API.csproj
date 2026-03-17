@@ -11,11 +11,15 @@
         <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="8.1.1" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.3"/>
         <PackageReference Include="Scalar.AspNetCore" Version="2.13.2" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.5">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\Rides.Application\Rides.Application.csproj" />
       <ProjectReference Include="..\Rides.Infrastructure\Rides.Infrastructure.csproj" />
-      <ProjectReference Include="..\..\Drivers.Infrastructure\Drivers.Infrastructure.csproj" />
     </ItemGroup>
 
 </Project>

@@ -1,6 +1,8 @@
+using Common.Domain;
+
 namespace Payments.Domain.Commands;
 
-public class RefundRiderCommand
+public class RefundRiderCommand : ICommand
 {
     public Guid PaymentId { get; }
     public string TenantId { get; }
