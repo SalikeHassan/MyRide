@@ -1,9 +1,7 @@
 using Asp.Versioning;
-using Azure.Messaging.ServiceBus;
 using EventStore.Client;
 using Payouts.Application.Handlers;
 using Payouts.Application.Ports;
-using Payouts.Infrastructure.Messaging;
 using Payouts.Infrastructure.Persistence;
 using Scalar.AspNetCore;
 
@@ -31,17 +29,8 @@ public class Program
         builder.Services.AddSingleton(new EventStoreClient(
             EventStoreClientSettings.Create(eventStoreConnectionString)));
 
-        // Service Bus
-        var serviceBusConnectionString = builder.Configuration["ServiceBus:ConnectionString"]!;
-        var payoutsTopic = builder.Configuration["ServiceBus:PayoutsTopic"]!;
-
-        builder.Services.AddSingleton<ServiceBusClient>(_ => new ServiceBusClient(serviceBusConnectionString));
-        builder.Services.AddKeyedSingleton<ServiceBusSender>("payouts", (sp, _) =>
-            sp.GetRequiredService<ServiceBusClient>().CreateSender(payoutsTopic));
-
         // Payouts
         builder.Services.AddScoped<IPayoutEventStore, EventStoreDbPayoutEventStore>();
-        builder.Services.AddScoped<IPayoutEventPublisher, PayoutEventPublisher>();
         builder.Services.AddScoped<PayDriverHandler>();
         builder.Services.AddScoped<CancelPayoutHandler>();
 

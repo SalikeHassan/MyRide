@@ -12,7 +12,7 @@ export interface RequestRideRequest {
   dropoffLng: number;
 }
 
-export interface StartRideResponse {
+export interface RequestRideResponse {
   rideId: string;
   riderId: string;
   driverId: string;
@@ -42,8 +42,8 @@ export class RidesService {
     return new HttpHeaders({ 'X-Tenant-Id': tenantId });
   }
 
-  startRide(request: RequestRideRequest, tenantId: string): Observable<StartRideResponse> {
-    return this.http.post<StartRideResponse>(`${this.baseUrl}/start`, request, { headers: this.headers(tenantId) });
+  requestRide(request: RequestRideRequest, tenantId: string): Observable<RequestRideResponse> {
+    return this.http.post<RequestRideResponse>(`${this.baseUrl}/start`, request, { headers: this.headers(tenantId) });
   }
 
   acceptRide(rideId: string, tenantId: string): Observable<any> {

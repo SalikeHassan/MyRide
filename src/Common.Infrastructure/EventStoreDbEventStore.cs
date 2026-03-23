@@ -20,10 +20,18 @@ public abstract class EventStoreDbEventStore<TAggregate> where TAggregate : Aggr
         this.factory = factory;
     }
 
-    protected async Task AppendEvents(TAggregate aggregate)
+    protected Task AppendEvents(TAggregate aggregate, Guid streamId)
     {
-        var streamName = StreamName(aggregate.Id, aggregate.TenantId);
+        return AppendEventsToStream(aggregate, StreamName(streamId, aggregate.TenantId));
+    }
 
+    protected Task AppendEvents(TAggregate aggregate)
+    {
+        return AppendEventsToStream(aggregate, StreamName(aggregate.Id, aggregate.TenantId));
+    }
+
+    private async Task AppendEventsToStream(TAggregate aggregate, string streamName)
+    {
         var eventData = aggregate.DomainEvents.Select(e => new EventData(
             Uuid.NewUuid(),
             e.GetType().Name,

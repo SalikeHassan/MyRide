@@ -13,8 +13,12 @@ public class PayoutsApiClient : IDownstreamPayoutsClient
         this.payoutsApi = payoutsApi;
     }
 
-    public Task PayDriver(Guid driverId, decimal amount, string currency, string tenantId)
+    public async Task<Guid> PayDriver(Guid rideId, Guid driverId, decimal amount, string currency, string tenantId)
     {
-        return payoutsApi.PayDriver(new PayDriverRequest(driverId, amount, currency), tenantId);
+        var response = await payoutsApi.PayDriver(
+            new PayDriverRequest(rideId, driverId, amount, currency),
+            tenantId);
+
+        return response.PayoutId;
     }
 }

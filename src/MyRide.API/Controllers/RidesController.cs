@@ -14,18 +14,18 @@ namespace MyRide.API.Controllers;
 [Route("api/v{version:apiVersion}/rides")]
 public class RidesController : ControllerBase
 {
-    private readonly StartRideSaga startRideSaga;
-    private readonly CompleteRideSaga completeRideSaga;
+    private readonly IRequestRideSaga requestRideSaga;
+    private readonly ICompleteRideSaga completeRideSaga;
     private readonly IDownstreamDriversClient driversClient;
     private readonly IRidesApi ridesApi;
 
     public RidesController(
-        StartRideSaga startRideSaga,
-        CompleteRideSaga completeRideSaga,
+        IRequestRideSaga requestRideSaga,
+        ICompleteRideSaga completeRideSaga,
         IDownstreamDriversClient driversClient,
         IRidesApi ridesApi)
     {
-        this.startRideSaga = startRideSaga;
+        this.requestRideSaga = requestRideSaga;
         this.completeRideSaga = completeRideSaga;
         this.driversClient = driversClient;
         this.ridesApi = ridesApi;
@@ -40,7 +40,7 @@ public class RidesController : ControllerBase
     }
 
     [HttpPost("start")]
-    public async Task<IActionResult> StartRide(
+    public async Task<IActionResult> RequestRide(
         [FromBody] RequestRideRequest request,
         [FromHeader(Name = "X-Tenant-Id")] string tenantId)
     {
@@ -53,7 +53,7 @@ public class RidesController : ControllerBase
 
         var riderId = Guid.NewGuid();
 
-        var saga = await startRideSaga.Execute(
+        var saga = await requestRideSaga.Execute(
             driver.Id,
             riderId,
             driver.Name,
@@ -65,7 +65,7 @@ public class RidesController : ControllerBase
             request.DropoffLat,
             request.DropoffLng);
 
-        if (saga.Status != StartRideSagaStatus.Completed)
+        if (saga.Status != RequestRideSagaStatus.Completed)
         {
             return StatusCode(503, new { Message = "Ride could not be started. Please try again.", saga.Status });
         }

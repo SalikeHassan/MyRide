@@ -12,7 +12,7 @@ public interface IRidesApi
     Task<ActiveRideResponse> GetRide(Guid rideId, [Header("X-Tenant-Id")] string tenantId);
 
     [Post("/api/v1/rides/start")]
-    Task<StartRideResponse> StartRide([Body] StartRideRequest request, [Header("X-Tenant-Id")] string tenantId);
+    Task<RequestRideResponse> RequestRide([Body] RidesApiRequest request, [Header("X-Tenant-Id")] string tenantId);
 
     [Post("/api/v1/rides/{rideId}/accept")]
     Task AcceptRide(Guid rideId, [Header("X-Tenant-Id")] string tenantId);

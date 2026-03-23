@@ -1,9 +1,7 @@
 using Asp.Versioning;
-using Azure.Messaging.ServiceBus;
 using EventStore.Client;
 using Payments.Application.Handlers;
 using Payments.Application.Ports;
-using Payments.Infrastructure.Messaging;
 using Payments.Infrastructure.Persistence;
 using Scalar.AspNetCore;
 
@@ -31,17 +29,8 @@ public class Program
         builder.Services.AddSingleton(new EventStoreClient(
             EventStoreClientSettings.Create(eventStoreConnectionString)));
 
-        // Service Bus
-        var serviceBusConnectionString = builder.Configuration["ServiceBus:ConnectionString"]!;
-        var paymentsTopic = builder.Configuration["ServiceBus:PaymentsTopic"]!;
-
-        builder.Services.AddSingleton<ServiceBusClient>(_ => new ServiceBusClient(serviceBusConnectionString));
-        builder.Services.AddKeyedSingleton<ServiceBusSender>("payments", (sp, _) =>
-            sp.GetRequiredService<ServiceBusClient>().CreateSender(paymentsTopic));
-
         // Payments
         builder.Services.AddScoped<IPaymentEventStore, EventStoreDbPaymentEventStore>();
-        builder.Services.AddScoped<IPaymentEventPublisher, PaymentEventPublisher>();
         builder.Services.AddScoped<ChargeRiderHandler>();
         builder.Services.AddScoped<RefundRiderHandler>();
 

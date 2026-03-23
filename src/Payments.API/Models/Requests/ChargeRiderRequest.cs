@@ -1,6 +1,7 @@
 namespace Payments.API.Models.Requests;
 
 public record ChargeRiderRequest(
+    Guid RideId,
     Guid PayerId,
     Guid PayeeId,
     decimal Amount,

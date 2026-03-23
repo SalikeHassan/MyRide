@@ -32,9 +32,9 @@ export class RidesComponent {
 
   constructor(private ridesService: RidesService) {}
 
-  startRide(): void {
+  requestRide(): void {
     this.loading = true;
-    this.ridesService.startRide(this.form, this.tenantId).subscribe({
+    this.ridesService.requestRide(this.form, this.tenantId).subscribe({
       next: (res) => {
         this.activeRideId = res.rideId;
         this.log('success', `Ride started. ID: ${res.rideId}`);

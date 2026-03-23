@@ -7,12 +7,12 @@ public class OrchestratorDbContext : DbContext
 {
     public OrchestratorDbContext(DbContextOptions<OrchestratorDbContext> options) : base(options) { }
 
-    public DbSet<StartRideSagaState> StartRideSagas => Set<StartRideSagaState>();
+    public DbSet<RequestRideSagaState> RequestRideSagas => Set<RequestRideSagaState>();
     public DbSet<CompleteRideSagaState> CompleteRideSagas => Set<CompleteRideSagaState>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<StartRideSagaState>(entity =>
+        modelBuilder.Entity<RequestRideSagaState>(entity =>
         {
             entity.ToTable("StartRideSagas", "orchestrator");
             entity.HasKey(s => s.SagaId);
@@ -22,6 +22,10 @@ public class OrchestratorDbContext : DbContext
             entity.Property(s => s.FareAmount).HasColumnType("decimal(18,2)");
             entity.Property(s => s.Status).HasConversion<string>();
             entity.Property(s => s.FailureReason).HasMaxLength(500);
+            entity.HasIndex(s => new { s.RiderId, s.TenantId })
+                .IsUnique()
+                .HasFilter("[Status] IN ('Pending', 'DriverAssigned')")
+                .HasDatabaseName("UX_ActiveStartRideSagaPerRider");
         });
 
         modelBuilder.Entity<CompleteRideSagaState>(entity =>

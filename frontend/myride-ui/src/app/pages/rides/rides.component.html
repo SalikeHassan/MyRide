@@ -13,7 +13,7 @@
       <label>Dropoff Lat<input type="number" [(ngModel)]="form.dropoffLat" /></label>
       <label>Dropoff Lng<input type="number" [(ngModel)]="form.dropoffLng" /></label>
     </div>
-    <button class="btn btn-primary" (click)="startRide()" [disabled]="loading || !!activeRideId">
+    <button class="btn btn-primary" (click)="requestRide()" [disabled]="loading || !!activeRideId">
       Start Ride
     </button>
   </div>

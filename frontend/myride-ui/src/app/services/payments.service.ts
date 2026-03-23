@@ -4,11 +4,11 @@ import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 export interface ChargeRiderRequest {
+  rideId: string;
   payerId: string;
   payeeId: string;
   amount: number;
   currency: string;
-  simulateFailure: boolean;
 }
 
 @Injectable({ providedIn: 'root' })

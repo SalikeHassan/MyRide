@@ -3,7 +3,7 @@ using MyRide.Domain.Sagas;
 
 namespace MyRide.Application.Sagas;
 
-public class CompleteRideSaga
+public class CompleteRideSaga : ICompleteRideSaga
 {
     private const int MaxRetries = 3;
 
@@ -45,28 +45,31 @@ public class CompleteRideSaga
     {
         if (saga.Status == CompleteRideSagaStatus.Pending)
         {
-            await ExecuteStep1(saga);
+            await CompleteRide(saga);
         }
 
-        if (saga.Status == CompleteRideSagaStatus.RideCompleted)
+        if (saga.Status == CompleteRideSagaStatus.RideCompleted
+            || saga.Status == CompleteRideSagaStatus.FreeDriverFailed)
         {
-            await ExecuteStep2(saga);
+            await FreeDriver(saga);
         }
 
-        if (saga.Status == CompleteRideSagaStatus.DriverFreed)
+        if (saga.Status == CompleteRideSagaStatus.DriverFreed
+            || saga.Status == CompleteRideSagaStatus.PaymentFailed)
         {
-            await ExecuteStep3(saga);
+            await ChargeRider(saga);
         }
 
-        if (saga.Status == CompleteRideSagaStatus.PaymentCharged)
+        if (saga.Status == CompleteRideSagaStatus.PaymentCharged
+            || saga.Status == CompleteRideSagaStatus.PayoutFailed)
         {
-            await ExecuteStep4(saga);
+            await PayDriver(saga);
         }
 
         return saga;
     }
 
-    private async Task ExecuteStep1(CompleteRideSagaState saga)
+    private async Task CompleteRide(CompleteRideSagaState saga)
     {
         try
         {
@@ -81,7 +84,7 @@ public class CompleteRideSaga
         }
     }
 
-    private async Task ExecuteStep2(CompleteRideSagaState saga)
+    private async Task FreeDriver(CompleteRideSagaState saga)
     {
         try
         {
@@ -103,12 +106,12 @@ public class CompleteRideSaga
         }
     }
 
-    private async Task ExecuteStep3(CompleteRideSagaState saga)
+    private async Task ChargeRider(CompleteRideSagaState saga)
     {
         try
         {
             var paymentId = await paymentsClient.ChargeRider(
-                saga.RiderId, saga.DriverId,
+                saga.RideId, saga.RiderId, saga.DriverId,
                 saga.FareAmount, saga.FareCurrency,
                 saga.TenantId);
 
@@ -129,12 +132,12 @@ public class CompleteRideSaga
         }
     }
 
-    private async Task ExecuteStep4(CompleteRideSagaState saga)
+    private async Task PayDriver(CompleteRideSagaState saga)
     {
         try
         {
             await payoutsClient.PayDriver(
-                saga.DriverId,
+                saga.RideId, saga.DriverId,
                 saga.FareAmount, saga.FareCurrency,
                 saga.TenantId);
 

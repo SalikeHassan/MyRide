@@ -1,11 +1,14 @@
 using Common.Domain;
 
-namespace Rides.Domain.Commands;
+namespace Rides.Domain.Events;
 
-public class StartRideCommand : ICommand
+public class RideRequested : IDomainEvent
 {
-    public Guid RideId { get; }
+    public Guid Id { get; } = Guid.NewGuid();
+    public DateTime OccurredOn { get; } = DateTime.UtcNow;
     public string TenantId { get; }
+
+    public Guid RideId { get; }
     public Guid RiderId { get; }
     public Guid DriverId { get; }
     public decimal FareAmount { get; }
@@ -14,14 +17,12 @@ public class StartRideCommand : ICommand
     public double PickupLng { get; }
     public double DropoffLat { get; }
     public double DropoffLng { get; }
-    public string DriverName { get; }
 
-    public StartRideCommand(
-        Guid rideId,
+    public RideRequested(
         string tenantId,
+        Guid rideId,
         Guid riderId,
         Guid driverId,
-        string driverName,
         decimal fareAmount,
         string fareCurrency,
         double pickupLat,
@@ -29,11 +30,10 @@ public class StartRideCommand : ICommand
         double dropoffLat,
         double dropoffLng)
     {
-        RideId = rideId;
         TenantId = tenantId;
+        RideId = rideId;
         RiderId = riderId;
         DriverId = driverId;
-        DriverName = driverName;
         FareAmount = fareAmount;
         FareCurrency = fareCurrency;
         PickupLat = pickupLat;

@@ -13,10 +13,10 @@ public class PaymentsApiClient : IDownstreamPaymentsClient
         this.paymentsApi = paymentsApi;
     }
 
-    public async Task<Guid> ChargeRider(Guid riderId, Guid driverId, decimal amount, string currency, string tenantId)
+    public async Task<Guid> ChargeRider(Guid rideId, Guid riderId, Guid driverId, decimal amount, string currency, string tenantId)
     {
         var response = await paymentsApi.ChargeRider(
-            new ChargeRiderRequest(riderId, driverId, amount, currency),
+            new ChargeRiderRequest(rideId, riderId, driverId, amount, currency),
             tenantId);
 
         return response.PaymentId;

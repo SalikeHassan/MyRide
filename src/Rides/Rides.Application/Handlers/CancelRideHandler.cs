@@ -7,16 +7,13 @@ namespace Rides.Application.Handlers;
 public class CancelRideHandler : ICommandHandler<CancelRideCommand>
 {
     private readonly IRideEventStore eventStore;
-    private readonly IRideEventPublisher eventPublisher;
     private readonly IRideReadStore rideReadStore;
 
     public CancelRideHandler(
         IRideEventStore eventStore,
-        IRideEventPublisher eventPublisher,
         IRideReadStore rideReadStore)
     {
         this.eventStore = eventStore;
-        this.eventPublisher = eventPublisher;
         this.rideReadStore = rideReadStore;
     }
 
@@ -28,15 +25,8 @@ public class CancelRideHandler : ICommandHandler<CancelRideCommand>
 
         await eventStore.Append(ride);
 
-        foreach (var domainEvent in ride.DomainEvents)
-        {
-            await eventPublisher.Publish(domainEvent);
-        }
-
         var readModel = await rideReadStore.GetById(ride.Id, ride.TenantId);
         readModel!.Cancel();
         await rideReadStore.Upsert(readModel);
-
-        ride.ClearDomainEvents();
     }
 }

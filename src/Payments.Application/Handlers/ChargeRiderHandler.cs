@@ -1,33 +1,30 @@
-using Common.Application;
 using Payments.Application.Ports;
 using Payments.Domain.Aggregate;
 using Payments.Domain.Commands;
 
 namespace Payments.Application.Handlers;
 
-public class ChargeRiderHandler : ICommandHandler<ChargeRiderCommand>
+public class ChargeRiderHandler
 {
     private readonly IPaymentEventStore eventStore;
-    private readonly IPaymentEventPublisher eventPublisher;
 
-    public ChargeRiderHandler(IPaymentEventStore eventStore,
-        IPaymentEventPublisher eventPublisher)
+    public ChargeRiderHandler(IPaymentEventStore eventStore)
     {
         this.eventStore = eventStore;
-        this.eventPublisher = eventPublisher;
     }
 
-    public async Task Handle(ChargeRiderCommand command)
+    public async Task<Guid> Handle(ChargeRiderCommand command)
     {
-        var payment = PaymentAggregate.Charge(command);
-
-        await eventStore.Append(payment);
-
-        foreach (var domainEvent in payment.DomainEvents)
+        if (await eventStore.ExistsByRideId(command.RideId, command.TenantId))
         {
-            await eventPublisher.Publish(domainEvent);
+            var existing = await eventStore.LoadByRideId(command.RideId, command.TenantId);
+            return existing.Id;
         }
 
-        payment.ClearDomainEvents();
+        var payment = PaymentAggregate.Charge(command);
+
+        await eventStore.AppendWithRideId(payment, command.RideId);
+
+        return payment.Id;
     }
 }

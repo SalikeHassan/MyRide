@@ -6,24 +6,26 @@ using Rides.Domain.ReadModels;
 
 namespace Rides.Application.Handlers;
 
-public class StartRideHandler : ICommandHandler<StartRideCommand>
+public class RequestRideHandler : ICommandHandler<RequestRideCommand>
 {
     private readonly IRideEventStore eventStore;
-    private readonly IRideEventPublisher eventPublisher;
     private readonly IRideReadStore rideReadStore;
 
-    public StartRideHandler(
+    public RequestRideHandler(
         IRideEventStore eventStore,
-        IRideEventPublisher eventPublisher,
         IRideReadStore rideReadStore)
     {
         this.eventStore = eventStore;
-        this.eventPublisher = eventPublisher;
         this.rideReadStore = rideReadStore;
     }
 
-    public async Task Handle(StartRideCommand command)
+    public async Task Handle(RequestRideCommand command)
     {
+        if (await eventStore.Exists(command.RideId, command.TenantId))
+        {
+            return;
+        }
+
         var riderHasActiveRide = await rideReadStore.HasActiveRideForRider(command.RiderId, command.TenantId);
 
         if (riderHasActiveRide)
@@ -35,11 +37,6 @@ public class StartRideHandler : ICommandHandler<StartRideCommand>
 
         await eventStore.Append(ride);
 
-        foreach (var domainEvent in ride.DomainEvents)
-        {
-            await eventPublisher.Publish(domainEvent);
-        }
-
         await rideReadStore.Upsert(RideReadModel.Create(
             ride.Id,
             ride.TenantId,
@@ -48,7 +45,5 @@ public class StartRideHandler : ICommandHandler<StartRideCommand>
             command.DriverName,
             ride.Fare.Amount,
             ride.Fare.Currency));
-
-        ride.ClearDomainEvents();
     }
 }

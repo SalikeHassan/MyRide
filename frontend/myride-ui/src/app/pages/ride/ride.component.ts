@@ -7,11 +7,11 @@ import { PayoutsService } from '../../services/payouts.service';
 import { environment } from '../../../environments/environment';
 
 export type RideStatus = 'idle' | 'requested' | 'inprogress' | 'completed' | 'cancelled';
-export type SimulateFailure = 'none' | 'payment' | 'payout';
 
 export interface TimelineEvent {
   label: string;
   status: 'success' | 'error' | 'pending' | 'compensating';
+  streamId?: string;
 }
 
 @Component({
@@ -34,13 +34,11 @@ export class RideComponent implements OnInit {
 
   fareAmount = 25.50;
   fareCurrency = 'GBP';
-  simulateFailure: SimulateFailure = 'none';
   timeline: TimelineEvent[] = [];
 
   activeRides: ActiveRide[] = [];
   loadingRides = false;
   loadingRideIds = new Set<string>();
-  simulateFailurePerRide: Record<string, SimulateFailure> = {};
 
   constructor(
     private ridesService: RidesService,
@@ -57,11 +55,6 @@ export class RideComponent implements OnInit {
     this.ridesService.getActiveRides(this.tenantId).subscribe({
       next: (rides) => {
         this.activeRides = rides;
-        rides.forEach(r => {
-          if (!this.simulateFailurePerRide[r.rideId]) {
-            this.simulateFailurePerRide[r.rideId] = 'none';
-          }
-        });
         this.loadingRides = false;
       },
       error: () => {
@@ -83,7 +76,7 @@ export class RideComponent implements OnInit {
     this.driverId = null;
     this.driverName = null;
 
-    this.ridesService.startRide({
+    this.ridesService.requestRide({
       fareAmount: this.fareAmount,
       fareCurrency: this.fareCurrency,
       pickupLat: 51.5074,
@@ -97,7 +90,11 @@ export class RideComponent implements OnInit {
         this.driverId = res.driverId;
         this.driverName = res.driverName;
         this.rideStatus = 'requested';
-        this.addTimeline(`Ride Requested — Assigned to ${res.driverName}`, 'success');
+        this.addTimeline(
+          `Ride Requested — Assigned to ${res.driverName}`,
+          'success',
+          `${this.tenantId}-ride-${res.rideId}`
+        );
         this.loading = false;
         this.loadActiveRides();
       },
@@ -115,7 +112,11 @@ export class RideComponent implements OnInit {
     this.ridesService.acceptRide(this.rideId, this.tenantId).subscribe({
       next: () => {
         this.rideStatus = 'inprogress';
-        this.addTimeline('Ride Accepted by Driver — In Progress', 'success');
+        this.addTimeline(
+          'Ride Accepted by Driver — In Progress',
+          'success',
+          `${this.tenantId}-ride-${this.rideId}`
+        );
         this.loading = false;
         this.loadActiveRides();
       },
@@ -133,7 +134,11 @@ export class RideComponent implements OnInit {
     this.ridesService.completeRide(this.rideId, this.tenantId).subscribe({
       next: () => {
         this.rideStatus = 'completed';
-        this.addTimeline('Ride Completed', 'success');
+        this.addTimeline(
+          'Ride Completed',
+          'success',
+          `${this.tenantId}-ride-${this.rideId}`
+        );
         this.loading = false;
         this.loadActiveRides();
       },
@@ -151,7 +156,11 @@ export class RideComponent implements OnInit {
     this.ridesService.cancelRide(this.rideId, 'Rider cancelled', this.tenantId).subscribe({
       next: () => {
         this.rideStatus = 'cancelled';
-        this.addTimeline('Ride Cancelled', 'error');
+        this.addTimeline(
+          'Ride Cancelled',
+          'error',
+          `${this.tenantId}-ride-${this.rideId}`
+        );
         this.loading = false;
         this.loadActiveRides();
       },
@@ -166,20 +175,21 @@ export class RideComponent implements OnInit {
     if (!this.rideId || !this.riderId || !this.driverId) { return; }
     this.loading = true;
 
-    const simulatePaymentFailure = this.simulateFailure === 'payment';
-    const simulatePayoutFailure = this.simulateFailure === 'payout';
-
     this.paymentsService.chargeRider({
+      rideId: this.rideId,
       payerId: this.riderId,
       payeeId: this.driverId,
       amount: this.fareAmount,
-      currency: this.fareCurrency,
-      simulateFailure: simulatePaymentFailure
+      currency: this.fareCurrency
     }, this.tenantId).subscribe({
       next: (res) => {
         this.paymentId = res.paymentId;
-        this.addTimeline(`Rider Charged ${this.fareCurrency} ${this.fareAmount.toFixed(2)}`, 'success');
-        this.processPayoutAfterCharge(this.driverId!, simulatePayoutFailure);
+        this.addTimeline(
+          `Rider Charged ${this.fareCurrency} ${this.fareAmount.toFixed(2)}`,
+          'success',
+          `${this.tenantId}-payment-${this.rideId}`
+        );
+        this.processPayoutAfterCharge(this.rideId!, this.driverId!);
       },
       error: (err) => {
         this.addTimeline(`Payment Failed: ${err.error?.message || err.message}`, 'error');
@@ -195,7 +205,11 @@ export class RideComponent implements OnInit {
 
     this.ridesService.acceptRide(ride.rideId, this.tenantId).subscribe({
       next: () => {
-        this.addTimeline(`${ride.driverName} accepted ride`, 'success');
+        this.addTimeline(
+          `${ride.driverName} accepted ride`,
+          'success',
+          `${this.tenantId}-ride-${ride.rideId}`
+        );
         this.loadingRideIds.delete(ride.rideId);
         this.loadActiveRides();
       },
@@ -211,7 +225,11 @@ export class RideComponent implements OnInit {
 
     this.ridesService.completeRide(ride.rideId, this.tenantId).subscribe({
       next: () => {
-        this.addTimeline(`Ride completed — ${ride.driverName}`, 'success');
+        this.addTimeline(
+          `Ride completed — ${ride.driverName}`,
+          'success',
+          `${this.tenantId}-ride-${ride.rideId}`
+        );
         this.loadingRideIds.delete(ride.rideId);
         this.loadActiveRides();
       },
@@ -227,7 +245,11 @@ export class RideComponent implements OnInit {
 
     this.ridesService.cancelRide(ride.rideId, 'Cancelled', this.tenantId).subscribe({
       next: () => {
-        this.addTimeline(`Ride cancelled — ${ride.driverName}`, 'error');
+        this.addTimeline(
+          `Ride cancelled — ${ride.driverName}`,
+          'error',
+          `${this.tenantId}-ride-${ride.rideId}`
+        );
         this.loadingRideIds.delete(ride.rideId);
         this.loadActiveRides();
       },
@@ -240,22 +262,23 @@ export class RideComponent implements OnInit {
 
   payRideFromList(ride: ActiveRide): void {
     this.loadingRideIds.add(ride.rideId);
-    const simulate = this.simulateFailurePerRide[ride.rideId] ?? 'none';
-    const simulatePaymentFailure = simulate === 'payment';
-    const simulatePayoutFailure = simulate === 'payout';
     let paymentId: string | null = null;
 
     this.paymentsService.chargeRider({
+      rideId: ride.rideId,
       payerId: ride.riderId,
       payeeId: ride.driverId,
       amount: ride.fareAmount,
-      currency: ride.fareCurrency,
-      simulateFailure: simulatePaymentFailure
+      currency: ride.fareCurrency
     }, this.tenantId).subscribe({
       next: (res) => {
         paymentId = res.paymentId;
-        this.addTimeline(`Rider charged ${ride.fareCurrency} ${ride.fareAmount.toFixed(2)}`, 'success');
-        this.processPayoutAfterCharge(ride.driverId, simulatePayoutFailure, ride.rideId, paymentId, ride.riderId, ride.fareAmount, ride.fareCurrency);
+        this.addTimeline(
+          `Rider charged ${ride.fareCurrency} ${ride.fareAmount.toFixed(2)}`,
+          'success',
+          `${this.tenantId}-payment-${ride.rideId}`
+        );
+        this.processPayoutAfterCharge(ride.rideId, ride.driverId, paymentId, ride.fareAmount, ride.fareCurrency);
       },
       error: (err) => {
         this.addTimeline(`Payment Failed: ${err.error?.message || err.message}`, 'error');
@@ -267,24 +290,26 @@ export class RideComponent implements OnInit {
   // ── Shared payment helpers ─────────────────────────────────────
 
   private processPayoutAfterCharge(
+    rideId: string,
     driverId: string,
-    simulatePayoutFailure: boolean,
-    rideId?: string,
     paymentId?: string | null,
-    riderId?: string,
     amount?: number,
     currency?: string
   ): void {
     this.payoutsService.payDriver({
+      rideId,
       recipientId: driverId,
       amount: amount ?? this.fareAmount,
-      currency: currency ?? this.fareCurrency,
-      simulateFailure: simulatePayoutFailure
+      currency: currency ?? this.fareCurrency
     }, this.tenantId).subscribe({
       next: () => {
-        this.addTimeline('Driver Paid', 'success');
+        this.addTimeline(
+          'Driver Paid',
+          'success',
+          `${this.tenantId}-payout-${rideId}`
+        );
         this.loading = false;
-        if (rideId) { this.loadingRideIds.delete(rideId); this.loadActiveRides(); }
+        if (rideId !== this.rideId) { this.loadingRideIds.delete(rideId); this.loadActiveRides(); }
       },
       error: () => {
         this.addTimeline('Payout Failed — Refunding Rider', 'compensating');
@@ -298,14 +323,18 @@ export class RideComponent implements OnInit {
 
     this.paymentsService.refundRider(paymentId, this.tenantId).subscribe({
       next: () => {
-        this.addTimeline('Rider Refunded', 'success');
+        this.addTimeline(
+          'Rider Refunded',
+          'success',
+          `${this.tenantId}-payment-${rideId ?? this.rideId}`
+        );
         this.loading = false;
-        if (rideId) { this.loadingRideIds.delete(rideId); this.loadActiveRides(); }
+        if (rideId && rideId !== this.rideId) { this.loadingRideIds.delete(rideId); this.loadActiveRides(); }
       },
       error: (err) => {
         this.addTimeline(`Refund Failed: ${err.error?.message || err.message}`, 'error');
         this.loading = false;
-        if (rideId) { this.loadingRideIds.delete(rideId); }
+        if (rideId && rideId !== this.rideId) { this.loadingRideIds.delete(rideId); }
       }
     });
   }
@@ -318,11 +347,10 @@ export class RideComponent implements OnInit {
     this.paymentId = null;
     this.rideStatus = 'idle';
     this.timeline = [];
-    this.simulateFailure = 'none';
   }
 
-  private addTimeline(label: string, status: TimelineEvent['status']): void {
-    this.timeline.push({ label, status });
+  private addTimeline(label: string, status: TimelineEvent['status'], streamId?: string): void {
+    this.timeline.push({ label, status, streamId });
   }
 
   statusLabel(status: string): string {

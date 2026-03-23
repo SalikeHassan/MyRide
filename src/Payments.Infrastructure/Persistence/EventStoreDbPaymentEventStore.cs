@@ -22,5 +22,11 @@ public class EventStoreDbPaymentEventStore : EventStoreDbEventStore<PaymentAggre
 
     public Task Append(PaymentAggregate payment) => AppendEvents(payment);
 
+    public Task AppendWithRideId(PaymentAggregate payment, Guid rideId) => AppendEvents(payment, rideId);
+
     public Task<PaymentAggregate> Load(Guid paymentId, string tenantId) => LoadEvents(paymentId, tenantId);
+
+    public Task<PaymentAggregate> LoadByRideId(Guid rideId, string tenantId) => LoadEvents(rideId, tenantId);
+
+    public Task<bool> ExistsByRideId(Guid rideId, string tenantId) => StreamExists(rideId, tenantId);
 }

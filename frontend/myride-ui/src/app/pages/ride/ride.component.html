@@ -86,16 +86,6 @@
             </div>
           </div>
 
-          <div class="simulate-group">
-            <label>Simulate Failure
-              <select [(ngModel)]="simulateFailure">
-                <option value="none">None</option>
-                <option value="payment">Payment Failure</option>
-                <option value="payout">Payout Failure</option>
-              </select>
-            </label>
-          </div>
-
           <button class="btn btn-pay" (click)="completePayment()" [disabled]="loading">
             Complete Payment
           </button>
@@ -148,12 +138,6 @@
                   }
 
                   @if (ride.status === 'Completed') {
-                    <select class="simulate-select"
-                            [(ngModel)]="simulateFailurePerRide[ride.rideId]">
-                      <option value="none">No failure</option>
-                      <option value="payment">Payment fail</option>
-                      <option value="payout">Payout fail</option>
-                    </select>
                     <button class="btn btn-sm btn-action-pay"
                             (click)="payRideFromList(ride)"
                             [disabled]="isRideLoading(ride.rideId)">
@@ -181,7 +165,12 @@
           @for (event of timeline; track $index) {
             <div class="timeline-item" [class]="event.status">
               <div class="timeline-dot"></div>
-              <div class="timeline-label">{{ event.label }}</div>
+              <div class="timeline-content">
+                <div class="timeline-label">{{ event.label }}</div>
+                @if (event.streamId) {
+                  <div class="timeline-stream">{{ event.streamId }}</div>
+                }
+              </div>
             </div>
           }
         </div>

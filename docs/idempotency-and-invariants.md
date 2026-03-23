@@ -43,196 +43,271 @@ operations that both appear valid at the time of the check.
 
 ---
 
-## Fixing the Rider Race Condition
+## What Was Built
 
-### The practical solution: database unique constraint
+### 1. `rides.RideReadModels` — Filtered Unique Index
 
-Rather than implementing a distributed lock or a complex saga-level guard,
-a unique index on the read model enforces the invariant at the storage level.
-If two concurrent requests both pass the application check, the second insert
-hits the constraint and fails. The database becomes the single arbiter.
+**Problem:** Two concurrent `StartRide` requests both pass the application-level
+`HasActiveRideForRider` check before either commits.
+
+**Solution:** A unique SQL index enforces the invariant at the database level.
+The second insert hits the constraint and fails — no distributed locking needed.
 
 ```sql
-CREATE UNIQUE INDEX UX_ActiveRidePerRider
-ON rides.RideReadModels (RiderId, TenantId)
-WHERE Status IN ('Requested', 'InProgress')
+-- Applied via migration: AddActiveRideUniqueConstraint
+CREATE UNIQUE INDEX [UX_ActiveRidePerRider]
+ON [rides].[RideReadModels] ([RiderId], [TenantId])
+WHERE [Status] IN ('Requested', 'InProgress')
 ```
+
+**Files changed:**
+- `Rides.Infrastructure/Persistence/RidesReadDbContext.cs` — declared the index in `OnModelCreating`
+- `Rides.Infrastructure/Migrations/20260318…_AddActiveRideUniqueConstraint.cs` — migration
 
 **What happens on conflict:**
 - The second `StartRide` request reaches `SqlRideReadStore.Upsert`
 - SQL Server rejects the insert with a unique constraint violation
-- The exception propagates up through `StartRideHandler`
-- The SAGA catches it, marks itself as compensating, and frees the driver
+- The exception propagates to the SAGA, which marks itself `Compensating` and frees the driver
 - The second request returns a clean error to the caller
 
-**Why this is the right approach:**
-- No distributed locking infrastructure needed
-- Enforced at the database level regardless of how many API instances are running
-- Naturally consistent with the read model the application already owns
-
 ---
 
-## Where Idempotency Is Needed
+### 2. `Payments.API` — Payment Idempotency via `rideId`-keyed Stream
 
-### 1. Payments — Critical
+**Problem:** The SAGA recovery job retries `ChargeRider` when a previous attempt
+timed out. If the original charge succeeded but the response was lost, the retry
+charges the rider a second time.
 
-**The risk:** The SAGA recovery job retries `ChargeRider` when a previous attempt
-failed or timed out. If the original request actually succeeded but the response
-was lost, the retry will charge the rider a second time.
+**Solution:** The EventStoreDB stream for a payment is keyed by `rideId` instead of
+`paymentId`. Before charging, the handler checks whether that stream already exists.
+If it does, it returns the existing `PaymentId` without charging again.
 
-**The scenario:**
-```
-SAGA Step 3:  POST /payments/charge  →  Payments.API processes payment ✓
-                                     ←  Response lost (timeout)
-SAGA marks PaymentFailed, saves to DB
+**Key:** `rideId` (one payment stream per ride per tenant)
+**On duplicate:** returns existing `PaymentId` with the same 200 OK response
 
-Recovery job retries:
-              POST /payments/charge  →  Payments.API processes payment AGAIN ✗
-                                        Rider charged twice
-```
-
-**The fix:** Payments.API checks whether a payment already exists for the given
-`rideId` before processing. If it does, it returns the existing result.
-
-```
-Idempotency key: rideId
-Rule:           One payment record per rideId per tenant
-On duplicate:   Return existing PaymentId with 200 OK — do not charge again
-Storage:        Unique index on payments table (RideId, TenantId)
-```
-
-**Implementation in Payments.API:**
 ```csharp
-// Before charging, check if payment already exists
-var existing = await repository.GetByRideId(command.RideId, command.TenantId);
-if (existing is not null)
+// Payments.Application/Handlers/ChargeRiderHandler.cs
+public async Task<Guid> Handle(ChargeRiderCommand command)
 {
-    return existing.PaymentId; // already charged — return existing result
+    if (await eventStore.ExistsByRideId(command.RideId, command.TenantId))
+    {
+        var existing = await eventStore.LoadByRideId(command.RideId, command.TenantId);
+        return existing.Id;  // already charged — return existing PaymentId
+    }
+
+    var payment = PaymentAggregate.Charge(command);
+    await eventStore.AppendWithRideId(payment, command.RideId);
+    // ...
+    return payment.Id;
 }
-
-// Proceed with charge
 ```
+
+**EventStoreDB stream name:** `{tenantId}-payment-{rideId}`
+
+**Files changed:**
+- `Payments.Domain/Commands/ChargeRiderCommand.cs` — added `RideId`; `PaymentId` now generated inside the command
+- `Payments.Application/Ports/IPaymentEventStore.cs` — added `ExistsByRideId`, `LoadByRideId`, `AppendWithRideId`
+- `Payments.Application/Handlers/ChargeRiderHandler.cs` — idempotency check; returns `Task<Guid>`
+- `Payments.Infrastructure/Persistence/EventStoreDbPaymentEventStore.cs` — implemented new port methods
+- `Payments.API/Models/Requests/ChargeRiderRequest.cs` — added `RideId`
+- `Payments.API/Controllers/PaymentsController.cs` — passes `RideId`, uses returned `paymentId`
+- `Common.Infrastructure/EventStoreDbEventStore.cs` — added `AppendEvents(aggregate, Guid streamId)` overload
+- `MyRide.Infrastructure/Models/ChargeRiderRequest.cs` — added `RideId`
+- `MyRide.Application/Ports/IDownstreamPaymentsClient.cs` — added `rideId` parameter
+- `MyRide.Infrastructure/Clients/Adapters/PaymentsApiClient.cs` — passes `rideId`
+- `MyRide.Application/Sagas/CompleteRideSaga.cs` — passes `saga.RideId` to `ChargeRider`
 
 ---
 
-### 2. Payouts — Critical (same reason as payments)
+### 3. `Payouts.API` — Payout Idempotency via `rideId`-keyed Stream
 
-**The risk:** The recovery job retries `PayDriver` if a previous attempt failed
-or timed out. Without idempotency, the driver receives a second payout.
+**Problem:** Same as payments — SAGA retry of `PayDriver` pays the driver twice
+if the original payout succeeded but the response was lost.
 
-**The fix:** Payouts.API checks whether a payout already exists for the given
-`rideId` before processing.
+**Solution:** Identical pattern to payments. EventStoreDB stream keyed by `rideId`.
+Handler checks existence before processing.
 
-```
-Idempotency key: rideId
-Rule:           One payout record per rideId per tenant
-On duplicate:   Return existing PayoutId with 200 OK — do not pay again
-Storage:        Unique index on payouts table (RideId, TenantId)
-```
-
----
-
-### 3. Driver Assign / Free — Partially Covered by EventStoreDB
-
-**The situation:** EventStoreDB's optimistic concurrency control (OCC) already
-provides some protection. When `AppendToStreamAsync` is called with an expected
-revision, a concurrent write from another process will fail with
-`WrongExpectedVersionException`.
-
-**The gap:** If `AssignDriver` succeeds but the response is lost, the SAGA retries.
-The second call loads the driver stream, tries to assign again, and the domain
-logic needs to handle the case where the driver is already assigned to this
-specific ride.
-
-**The fix:** Make the domain method idempotent.
+**Key:** `rideId` (one payout stream per ride per tenant)
+**On duplicate:** returns existing `PayoutId` with the same 200 OK response
 
 ```csharp
-// DriverAggregate.Assign
+// Payouts.Application/Handlers/PayDriverHandler.cs
+public async Task<Guid> Handle(PayDriverCommand command)
+{
+    if (await eventStore.ExistsByRideId(command.RideId, command.TenantId))
+    {
+        var existing = await eventStore.LoadByRideId(command.RideId, command.TenantId);
+        return existing.Id;  // already paid — return existing PayoutId
+    }
+
+    var payout = PayoutAggregate.Pay(command);
+    await eventStore.AppendWithRideId(payout, command.RideId);
+    // ...
+    return payout.Id;
+}
+```
+
+**EventStoreDB stream name:** `{tenantId}-payout-{rideId}`
+
+**Files changed:**
+- `Payouts.Domain/Commands/PayDriverCommand.cs` — added `RideId`; `PayoutId` generated inside the command
+- `Payouts.Application/Ports/IPayoutEventStore.cs` — added `ExistsByRideId`, `LoadByRideId`, `AppendWithRideId`
+- `Payouts.Application/Handlers/PayDriverHandler.cs` — idempotency check; returns `Task<Guid>`
+- `Payouts.Infrastructure/Persistence/EventStoreDbPayoutEventStore.cs` — implemented new port methods
+- `Payouts.API/Models/Requests/PayDriverRequest.cs` — added `RideId`
+- `Payouts.API/Controllers/PayoutsController.cs` — passes `RideId`, returns `PayoutId`
+- `MyRide.Infrastructure/Models/PayDriverRequest.cs` — added `RideId`
+- `MyRide.Infrastructure/Models/PayDriverResponse.cs` — new; carries `PayoutId` back to orchestrator
+- `MyRide.Infrastructure/Clients/Refit/IPayoutsApi.cs` — return type changed to `Task<PayDriverResponse>`
+- `MyRide.Application/Ports/IDownstreamPayoutsClient.cs` — added `rideId`; return type `Task<Guid>`
+- `MyRide.Infrastructure/Clients/Adapters/PayoutsApiClient.cs` — passes `rideId`, returns `payoutId`
+- `MyRide.Application/Sagas/CompleteRideSaga.cs` — passes `saga.RideId` to `PayDriver`
+
+---
+
+### 4. `DriverAggregate.Assign` — Domain-Level Idempotency
+
+**Problem:** If `AssignDriver` succeeds in EventStoreDB but the response is lost,
+the SAGA retry calls `AssignDriver` again. Without protection, the second call throws
+`"Driver already has an active ride"` — which the SAGA treats as a failure and begins
+compensation, incorrectly freeing a driver that is legitimately assigned.
+
+**Solution:** The aggregate checks whether the driver is already assigned to the
+**same** ride. If so, it returns silently — no event raised, no error thrown.
+
+```csharp
+// Drivers.Domain/Aggregates/DriverAggregate.cs
 public void Assign(Guid rideId)
 {
-    if (CurrentRideId == rideId)
+    if (IsAssigned && CurrentRideId == rideId)
     {
-        return; // already assigned to this ride — idempotent no-op
+        return;  // already assigned to this ride — idempotent no-op
     }
 
-    if (Status == DriverStatus.InProgress)
+    if (IsAssigned)
     {
-        throw new InvalidOperationException("Driver is already on a ride.");
+        throw new InvalidOperationException($"Driver {Id} already has an active ride.");
     }
 
-    Raise(new DriverAssigned(Id, TenantId, rideId));
+    RaiseEvent(new DriverAssigned(Id, rideId, TenantId, DateTime.UtcNow));
 }
 ```
 
-Same pattern applies to `Free` — if the driver is already free, treat as success.
+`CurrentRideId` is populated from the `DriverAssigned` event during rehydration
+and cleared when `DriverFreed` is applied.
 
-```
-Idempotency key: (driverId, rideId)
-Rule:           Assigning the same driver to the same ride twice is a no-op
-On duplicate:   Return success without emitting a new event
-```
+**Key:** `(driverId, rideId)` pair
+**On duplicate:** no-op — returns success without emitting a new event
 
----
-
-### 4. Ride Creation in EventStoreDB — Already Idempotent
-
-The SAGA generates `rideId` upfront and stores it in `StartRideSagaState`
-before any downstream calls. This means retries always use the same `rideId`.
-
-`AppendToStreamAsync` with `StreamState.NoStream` will reject a second write
-to a stream that already exists. The SAGA should treat `WrongExpectedVersionException`
-on a `NoStream` append as "ride already created — success" and continue.
-
-```
-Idempotency key: rideId (pre-generated by SAGA)
-Already handled: StreamState.NoStream rejects duplicates
-Gap to close:   SAGA should not treat this as a fatal error — check if the
-                existing stream matches the expected rideId and proceed
-```
+**Files changed:**
+- `Drivers.Domain/Aggregates/DriverAggregate.cs` — added `CurrentRideId` property, updated `Assign`, updated `Apply(DriverAssigned)` and `Apply(DriverFreed)`
 
 ---
 
-### 5. SAGA Creation — Prevent Duplicate SAGAs for the Same Rider
+### 5. Ride Creation in EventStoreDB — Stream Existence Check
 
-**The risk:** A user clicks "Start Ride" twice quickly. Two SAGA instances are
-created concurrently. Both pass the `HasActiveRideForRider` check. The DB
-unique constraint on the ride read model will ultimately catch one, but both
-SAGAs will have assigned a driver before the conflict is discovered.
+**Problem:** The SAGA pre-generates `rideId` before calling `Rides.API`. On retry,
+it calls `StartRide` again with the same `rideId`. `StartRideHandler` calls
+`AppendToStreamAsync` with `StreamState.NoStream`, which throws
+`WrongExpectedVersionException` if the stream already exists. Without handling,
+the SAGA sees this as a failure and begins compensation.
 
-**The fix:** Introduce a SAGA-level idempotency key tied to the rider's intent.
+**Solution:** `StartRideHandler` checks whether the ride stream already exists
+before doing any work. If it does, the ride was already created — return immediately.
 
+```csharp
+// Rides.Application/Handlers/StartRideHandler.cs
+public async Task Handle(StartRideCommand command)
+{
+    if (await eventStore.Exists(command.RideId, command.TenantId))
+    {
+        return;  // ride already created — idempotent success
+    }
+
+    // ... proceed with normal creation
+}
 ```
-Idempotency key: (riderId, tenantId) + short time window (e.g. 30 seconds)
-Rule:           Only one pending StartRideSaga per rider at a time
-On duplicate:   Return the existing saga's result
-Storage:        Unique index on orchestrator.StartRideSagas (RiderId, TenantId)
-                WHERE Status IN ('Pending', 'DriverAssigned')
+
+**Key:** `rideId` (pre-generated by SAGA and stored in `StartRideSagaState`)
+**On duplicate:** early return — no event raised, no read model update attempted
+
+**Files changed:**
+- `Rides.Application/Ports/IRideEventStore.cs` — added `Task<bool> Exists(Guid rideId, string tenantId)`
+- `Rides.Infrastructure/Persistence/EventStoreDbRideEventStore.cs` — implemented `Exists` via `StreamExists`
+- `Rides.Application/Handlers/StartRideHandler.cs` — existence check at the top of `Handle`
+
+---
+
+### 6. `StartRideSaga` Creation Guard — Prevent Duplicate SAGAs
+
+**Problem:** A user double-taps "Start Ride". Two SAGA instances are created
+concurrently. Both may assign a driver before the ride unique constraint fires.
+This wastes one driver assignment and requires unnecessary compensation.
+
+**Solution:** A filtered unique index on the SAGA table ensures only one active
+SAGA per rider at a time. The second insert fails fast at the database level,
+before any downstream calls are made.
+
+```sql
+-- Applied via migration: AddStartRideSagaCreationGuard
+CREATE UNIQUE INDEX [UX_ActiveStartRideSagaPerRider]
+ON [orchestrator].[StartRideSagas] ([RiderId], [TenantId])
+WHERE [Status] IN ('Pending', 'DriverAssigned')
 ```
+
+**Key:** `(RiderId, TenantId)` while SAGA is in an active state
+**On conflict:** second SAGA insert fails immediately — no driver is assigned
+
+**Files changed:**
+- `MyRide.Infrastructure/Persistence/OrchestratorDbContext.cs` — declared the index in `OnModelCreating`
+- `MyRide.Infrastructure/Migrations/20260318…_AddStartRideSagaCreationGuard.cs` — migration
+
+---
+
+## Infrastructure Change: `AppendEvents` Overload
+
+Payments and Payouts idempotency required writing aggregate events to a stream
+keyed by `rideId` rather than the aggregate's own `Id`. A second overload was
+added to the shared base class:
+
+```csharp
+// Common.Infrastructure/EventStoreDbEventStore.cs
+
+// Original — stream keyed by aggregate.Id
+protected Task AppendEvents(TAggregate aggregate)
+
+// New — stream keyed by an explicit streamId (e.g. rideId)
+protected Task AppendEvents(TAggregate aggregate, Guid streamId)
+```
+
+Both delegate to a private `AppendEventsToStream(aggregate, streamName)` method.
+This keeps all stream-naming logic in one place.
 
 ---
 
 ## Summary Table
 
-| Location | Problem | Idempotency Key | Mechanism |
-|---|---|---|---|
-| StartRideSaga creation | Two sagas for same rider | `(RiderId, TenantId)` | DB unique index on active sagas |
-| `rides.RideReadModels` | Two active rides for same rider | `(RiderId, TenantId)` | DB unique constraint filtered on active status |
-| Ride creation in EventStoreDB | Duplicate ride stream | `rideId` | `StreamState.NoStream` — treat duplicate stream as success |
-| Driver assign / free | Retry assigns driver twice | `(driverId, rideId)` | Domain method checks existing state before raising event |
-| `payments.Payments` | Rider charged twice on retry | `rideId` | Check existing payment before processing — return existing |
-| `payouts.Payouts` | Driver paid twice on retry | `rideId` | Check existing payout before processing — return existing |
+| # | Location | Problem | Key | Mechanism |
+|---|---|---|---|---|
+| 1 | `rides.RideReadModels` | Two active rides for same rider | `(RiderId, TenantId)` | SQL filtered unique index on active status |
+| 2 | `Payments.API` | Rider charged twice on SAGA retry | `rideId` | EventStoreDB stream existence check before charge |
+| 3 | `Payouts.API` | Driver paid twice on SAGA retry | `rideId` | EventStoreDB stream existence check before payout |
+| 4 | `DriverAggregate.Assign` | SAGA retry assigns driver twice | `(driverId, rideId)` | Domain method checks `CurrentRideId` — no-op if same ride |
+| 5 | Ride creation in EventStoreDB | SAGA retry creates duplicate ride stream | `rideId` | `IRideEventStore.Exists` check before appending |
+| 6 | `orchestrator.StartRideSagas` | Double-tap creates two SAGAs | `(RiderId, TenantId)` | SQL filtered unique index on active SAGA status |
 
 ---
 
-## Build Order Recommendation
+## Build Order (Implemented)
 
 | Priority | What | Why |
 |---|---|---|
-| 1 | DB unique constraint on `rides.RideReadModels` | Simplest, highest-impact, prevents data corruption |
-| 2 | Idempotency in `Payments.API` | Real money — most critical |
-| 3 | Idempotency in `Payouts.API` | Real money — same reason |
-| 4 | `DriverAggregate.Assign / Free` idempotent | Closes the EventStoreDB retry gap |
-| 5 | SAGA creation guard on `(RiderId, TenantId)` | Nice to have — DB constraint on ride covers most of this |
+| 1 | `rides.RideReadModels` unique index | Simplest, highest-impact, prevents data corruption |
+| 2 | `Payments.API` idempotency | Real money — most critical |
+| 3 | `Payouts.API` idempotency | Real money — same reason |
+| 4 | `DriverAggregate.Assign / Free` idempotent | Closes EventStoreDB retry gap |
+| 5 | `StartRideHandler` existence check | Prevents spurious compensation on ride-creation retry |
+| 6 | `StartRideSaga` creation guard | Stops double-SAGA before any downstream calls |
 
 ---
 

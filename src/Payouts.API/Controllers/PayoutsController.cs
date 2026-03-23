@@ -28,16 +28,16 @@ public class PayoutsController : ControllerBase
         [FromHeader(Name = "X-Tenant-Id")] string tenantId)
     {
         var command = new PayDriverCommand(
-            Guid.NewGuid(),
+            request.RideId,
             tenantId,
             request.RecipientId,
             request.Amount,
             request.Currency,
             request.SimulateFailure);
 
-        await payDriverHandler.Handle(command);
+        var payoutId = await payDriverHandler.Handle(command);
 
-        return Ok(new { Message = "Driver paid." });
+        return Ok(new { PayoutId = payoutId, Message = "Driver paid." });
     }
 
     [HttpPost("{payoutId:guid}/cancel")]

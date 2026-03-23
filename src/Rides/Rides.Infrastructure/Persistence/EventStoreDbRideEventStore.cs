@@ -12,7 +12,7 @@ public class EventStoreDbRideEventStore : EventStoreDbEventStore<RideAggregate>,
 
     protected override Dictionary<string, Type> EventTypeMap => new()
     {
-        { nameof(RideStarted),   typeof(RideStarted) },
+        { nameof(RideRequested), typeof(RideRequested) },
         { nameof(RideAccepted),  typeof(RideAccepted) },
         { nameof(RideCompleted), typeof(RideCompleted) },
         { nameof(RideCancelled), typeof(RideCancelled) }
@@ -24,4 +24,6 @@ public class EventStoreDbRideEventStore : EventStoreDbEventStore<RideAggregate>,
     public Task Append(RideAggregate ride) => AppendEvents(ride);
 
     public Task<RideAggregate> Load(Guid rideId, string tenantId) => LoadEvents(rideId, tenantId);
+
+    public Task<bool> Exists(Guid rideId, string tenantId) => StreamExists(rideId, tenantId);
 }

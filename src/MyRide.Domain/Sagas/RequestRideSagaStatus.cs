@@ -1,6 +1,6 @@
 namespace MyRide.Domain.Sagas;
 
-public enum StartRideSagaStatus
+public enum RequestRideSagaStatus
 {
     Pending,
     DriverAssigned,

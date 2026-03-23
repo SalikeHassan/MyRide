@@ -28,7 +28,7 @@ public class PaymentsController : ControllerBase
         [FromHeader(Name = "X-Tenant-Id")] string tenantId)
     {
         var command = new ChargeRiderCommand(
-            Guid.NewGuid(),
+            request.RideId,
             tenantId,
             request.PayerId,
             request.PayeeId,
@@ -36,9 +36,9 @@ public class PaymentsController : ControllerBase
             request.Currency,
             request.SimulateFailure);
 
-        await chargeRiderHandler.Handle(command);
+        var paymentId = await chargeRiderHandler.Handle(command);
 
-        return Ok(new { PaymentId = command.PaymentId, Message = "Rider charged." });
+        return Ok(new { PaymentId = paymentId, Message = "Rider charged." });
     }
 
     [HttpPost("{paymentId:guid}/refund")]

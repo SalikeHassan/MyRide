@@ -12,20 +12,20 @@ namespace Rides.API.Controllers;
 [Route("api/v{version:apiVersion}/rides")]
 public class RidesController : ControllerBase
 {
-    private readonly StartRideHandler startRideHandler;
+    private readonly RequestRideHandler requestRideHandler;
     private readonly AcceptRideHandler acceptRideHandler;
     private readonly CompleteRideHandler completeRideHandler;
     private readonly CancelRideHandler cancelRideHandler;
     private readonly GetActiveRidesHandler getActiveRidesHandler;
 
     public RidesController(
-        StartRideHandler startRideHandler,
+        RequestRideHandler requestRideHandler,
         AcceptRideHandler acceptRideHandler,
         CompleteRideHandler completeRideHandler,
         CancelRideHandler cancelRideHandler,
         GetActiveRidesHandler getActiveRidesHandler)
     {
-        this.startRideHandler = startRideHandler;
+        this.requestRideHandler = requestRideHandler;
         this.acceptRideHandler = acceptRideHandler;
         this.completeRideHandler = completeRideHandler;
         this.cancelRideHandler = cancelRideHandler;
@@ -56,11 +56,11 @@ public class RidesController : ControllerBase
     }
 
     [HttpPost("start")]
-    public async Task<IActionResult> StartRide(
-        [FromBody] StartRideRequest request,
+    public async Task<IActionResult> RequestRide(
+        [FromBody] RequestRideRequest request,
         [FromHeader(Name = "X-Tenant-Id")] string tenantId)
     {
-        var command = new StartRideCommand(
+        var command = new RequestRideCommand(
             request.RideId,
             tenantId,
             request.RiderId,
@@ -73,7 +73,7 @@ public class RidesController : ControllerBase
             request.DropoffLat,
             request.DropoffLng);
 
-        await startRideHandler.Handle(command);
+        await requestRideHandler.Handle(command);
 
         return Ok(new { command.RideId, Message = "Ride requested." });
     }

@@ -22,6 +22,10 @@ public class RidesReadDbContext : DbContext
             entity.Property(r => r.FareAmount).HasColumnType("decimal(18,2)");
             entity.Property(r => r.Status).HasConversion<string>();
             entity.HasIndex(r => new { r.TenantId, r.Status });
+            entity.HasIndex(r => new { r.RiderId, r.TenantId })
+                .IsUnique()
+                .HasFilter("[Status] IN ('Requested', 'InProgress')")
+                .HasDatabaseName("UX_ActiveRidePerRider");
         });
     }
 }

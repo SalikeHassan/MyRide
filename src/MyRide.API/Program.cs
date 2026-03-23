@@ -77,12 +77,12 @@ builder.Services.AddScoped<IDownstreamPaymentsClient, PaymentsApiClient>();
 builder.Services.AddScoped<IDownstreamPayoutsClient, PayoutsApiClient>();
 
 // SAGA repositories
-builder.Services.AddScoped<IStartRideSagaRepository, SqlStartRideSagaRepository>();
+builder.Services.AddScoped<IRequestRideSagaRepository, SqlRequestRideSagaRepository>();
 builder.Services.AddScoped<ICompleteRideSagaRepository, SqlCompleteRideSagaRepository>();
 
 // SAGAs
-builder.Services.AddScoped<StartRideSaga>();
-builder.Services.AddScoped<CompleteRideSaga>();
+builder.Services.AddScoped<IRequestRideSaga, RequestRideSaga>();
+builder.Services.AddScoped<ICompleteRideSaga, CompleteRideSaga>();
 
 // Recovery job
 builder.Services.AddHostedService<SagaRecoveryJob>();

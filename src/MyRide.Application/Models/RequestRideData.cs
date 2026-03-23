@@ -1,6 +1,6 @@
-namespace Rides.API.Models.Requests;
+namespace MyRide.Application.Models;
 
-public record StartRideRequest(
+public record RequestRideData(
     Guid RideId,
     Guid RiderId,
     Guid DriverId,

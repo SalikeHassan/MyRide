@@ -1,6 +1,6 @@
 namespace MyRide.Domain.Sagas;
 
-public class StartRideSagaState
+public class RequestRideSagaState
 {
     public Guid SagaId { get; private set; }
     public string TenantId { get; private set; } = string.Empty;
@@ -14,14 +14,14 @@ public class StartRideSagaState
     public double PickupLng { get; private set; }
     public double DropoffLat { get; private set; }
     public double DropoffLng { get; private set; }
-    public StartRideSagaStatus Status { get; private set; }
+    public RequestRideSagaStatus Status { get; private set; }
     public string? FailureReason { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
 
-    private StartRideSagaState() { }
+    private RequestRideSagaState() { }
 
-    public static StartRideSagaState Create(
+    public static RequestRideSagaState Create(
         Guid rideId,
         Guid driverId,
         Guid riderId,
@@ -34,7 +34,7 @@ public class StartRideSagaState
         double dropoffLat,
         double dropoffLng)
     {
-        return new StartRideSagaState
+        return new RequestRideSagaState
         {
             SagaId = Guid.NewGuid(),
             RideId = rideId,
@@ -48,7 +48,7 @@ public class StartRideSagaState
             PickupLng = pickupLng,
             DropoffLat = dropoffLat,
             DropoffLng = dropoffLng,
-            Status = StartRideSagaStatus.Pending,
+            Status = RequestRideSagaStatus.Pending,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -56,39 +56,39 @@ public class StartRideSagaState
 
     public void MarkDriverAssigned()
     {
-        Status = StartRideSagaStatus.DriverAssigned;
+        Status = RequestRideSagaStatus.DriverAssigned;
         UpdatedAt = DateTime.UtcNow;
     }
 
     public void MarkCompleted()
     {
-        Status = StartRideSagaStatus.Completed;
+        Status = RequestRideSagaStatus.Completed;
         UpdatedAt = DateTime.UtcNow;
     }
 
     public void MarkFailed(string reason)
     {
-        Status = StartRideSagaStatus.Failed;
+        Status = RequestRideSagaStatus.Failed;
         FailureReason = reason;
         UpdatedAt = DateTime.UtcNow;
     }
 
     public void MarkCompensating(string reason)
     {
-        Status = StartRideSagaStatus.Compensating;
+        Status = RequestRideSagaStatus.Compensating;
         FailureReason = reason;
         UpdatedAt = DateTime.UtcNow;
     }
 
     public void MarkCompensated()
     {
-        Status = StartRideSagaStatus.Compensated;
+        Status = RequestRideSagaStatus.Compensated;
         UpdatedAt = DateTime.UtcNow;
     }
 
     public void MarkCompensationFailed(string reason)
     {
-        Status = StartRideSagaStatus.CompensationFailed;
+        Status = RequestRideSagaStatus.CompensationFailed;
         FailureReason = reason;
         UpdatedAt = DateTime.UtcNow;
     }

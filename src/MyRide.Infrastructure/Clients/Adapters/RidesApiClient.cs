@@ -32,9 +32,9 @@ public class RidesApiClient : IDownstreamRidesClient
         }
     }
 
-    public async Task<Guid> StartRide(StartRideData data, string tenantId)
+    public async Task<Guid> RequestRide(RequestRideData data, string tenantId)
     {
-        var request = new StartRideRequest(
+        var request = new RidesApiRequest(
             data.RideId,
             data.RiderId,
             data.DriverId,
@@ -46,7 +46,7 @@ public class RidesApiClient : IDownstreamRidesClient
             data.DropoffLat,
             data.DropoffLng);
 
-        var response = await ridesApi.StartRide(request, tenantId);
+        var response = await ridesApi.RequestRide(request, tenantId);
         return response.RideId;
     }
 

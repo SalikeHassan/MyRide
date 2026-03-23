@@ -28,7 +28,10 @@ public class SqlCompleteRideSagaRepository : ICompleteRideSagaRepository
     public Task<List<CompleteRideSagaState>> GetStuck()
     {
         return context.CompleteRideSagas
-            .Where(s => s.Status == CompleteRideSagaStatus.FreeDriverFailed
+            .Where(s => s.Status == CompleteRideSagaStatus.RideCompleted
+                     || s.Status == CompleteRideSagaStatus.DriverFreed
+                     || s.Status == CompleteRideSagaStatus.PaymentCharged
+                     || s.Status == CompleteRideSagaStatus.FreeDriverFailed
                      || s.Status == CompleteRideSagaStatus.PaymentFailed
                      || s.Status == CompleteRideSagaStatus.PayoutFailed)
             .ToListAsync();

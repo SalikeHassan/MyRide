@@ -21,22 +21,22 @@ public class SagaRecoveryJob : BackgroundService
         while (!stoppingToken.IsCancellationRequested)
         {
             await Task.Delay(Interval, stoppingToken);
-            await RecoverStartRideSagas();
+            await RecoverRequestRideSagas();
             await RecoverCompleteRideSagas();
         }
     }
 
-    private async Task RecoverStartRideSagas()
+    private async Task RecoverRequestRideSagas()
     {
         using var scope = scopeFactory.CreateScope();
-        var repository = scope.ServiceProvider.GetRequiredService<IStartRideSagaRepository>();
-        var saga = scope.ServiceProvider.GetRequiredService<StartRideSaga>();
+        var repository = scope.ServiceProvider.GetRequiredService<IRequestRideSagaRepository>();
+        var saga = scope.ServiceProvider.GetRequiredService<IRequestRideSaga>();
 
         var stuck = await repository.GetStuck();
 
         foreach (var state in stuck)
         {
-            if (state.Status == StartRideSagaStatus.Compensating)
+            if (state.Status == RequestRideSagaStatus.Compensating)
             {
                 await saga.Compensate(state);
             }
@@ -47,7 +47,7 @@ public class SagaRecoveryJob : BackgroundService
     {
         using var scope = scopeFactory.CreateScope();
         var repository = scope.ServiceProvider.GetRequiredService<ICompleteRideSagaRepository>();
-        var saga = scope.ServiceProvider.GetRequiredService<CompleteRideSaga>();
+        var saga = scope.ServiceProvider.GetRequiredService<ICompleteRideSaga>();
 
         var stuck = await repository.GetStuck();
 

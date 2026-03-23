@@ -4,14 +4,14 @@ using MyRide.Domain.Sagas;
 
 namespace MyRide.Application.Sagas;
 
-public class StartRideSaga
+public class RequestRideSaga : IRequestRideSaga
 {
-    private readonly IStartRideSagaRepository repository;
+    private readonly IRequestRideSagaRepository repository;
     private readonly IDownstreamDriversClient driversClient;
     private readonly IDownstreamRidesClient ridesClient;
 
-    public StartRideSaga(
-        IStartRideSagaRepository repository,
+    public RequestRideSaga(
+        IRequestRideSagaRepository repository,
         IDownstreamDriversClient driversClient,
         IDownstreamRidesClient ridesClient)
     {
@@ -20,7 +20,7 @@ public class StartRideSaga
         this.ridesClient = ridesClient;
     }
 
-    public async Task<StartRideSagaState> Execute(
+    public async Task<RequestRideSagaState> Execute(
         Guid driverId,
         Guid riderId,
         string driverName,
@@ -34,14 +34,13 @@ public class StartRideSaga
     {
         var rideId = Guid.NewGuid();
 
-        var saga = StartRideSagaState.Create(
+        var saga = RequestRideSagaState.Create(
             rideId, driverId, riderId, driverName, tenantId,
             fareAmount, fareCurrency,
             pickupLat, pickupLng, dropoffLat, dropoffLng);
 
         await repository.Save(saga);
 
-        // Step 1: assign driver
         try
         {
             await driversClient.AssignDriver(driverId, rideId, tenantId);
@@ -55,15 +54,14 @@ public class StartRideSaga
             return saga;
         }
 
-        // Step 2: create ride
         try
         {
-            var data = new StartRideData(
+            var data = new RequestRideData(
                 rideId, riderId, driverId, driverName,
                 fareAmount, fareCurrency,
                 pickupLat, pickupLng, dropoffLat, dropoffLng);
 
-            await ridesClient.StartRide(data, tenantId);
+            await ridesClient.RequestRide(data, tenantId);
             saga.MarkCompleted();
             await repository.Save(saga);
         }
@@ -77,7 +75,7 @@ public class StartRideSaga
         return saga;
     }
 
-    public async Task Compensate(StartRideSagaState saga)
+    public async Task Compensate(RequestRideSagaState saga)
     {
         try
         {

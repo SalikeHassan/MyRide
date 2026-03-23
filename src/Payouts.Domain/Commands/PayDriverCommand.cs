@@ -4,6 +4,7 @@ namespace Payouts.Domain.Commands;
 
 public class PayDriverCommand : ICommand
 {
+    public Guid RideId { get; }
     public Guid PayoutId { get; }
     public string TenantId { get; }
     public Guid RecipientId { get; }
@@ -11,10 +12,11 @@ public class PayDriverCommand : ICommand
     public string Currency { get; }
     public bool SimulateFailure { get; }
 
-    public PayDriverCommand(Guid payoutId, string tenantId, Guid recipientId, decimal amount, string currency, bool 
+    public PayDriverCommand(Guid rideId, string tenantId, Guid recipientId, decimal amount, string currency, bool
         simulateFailure = false)
     {
-        PayoutId = payoutId;
+        RideId = rideId;
+        PayoutId = Guid.NewGuid();
         TenantId = tenantId;
         RecipientId = recipientId;
         Amount = amount;

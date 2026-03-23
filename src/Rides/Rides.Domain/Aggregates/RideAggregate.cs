@@ -24,7 +24,7 @@ public class RideAggregate : AggregateRoot
         return ride;
     }
 
-    public static RideAggregate Start(StartRideCommand command)
+    public static RideAggregate Start(RequestRideCommand command)
     {
         if (command.RiderId == Guid.Empty)
         {
@@ -42,7 +42,7 @@ public class RideAggregate : AggregateRoot
         var pickup = new Location(command.PickupLat, command.PickupLng);
         var dropoff = new Location(command.DropoffLat, command.DropoffLng);
 
-        ride.RaiseEvent(new RideStarted(
+        ride.RaiseEvent(new RideRequested(
             command.TenantId,
             command.RideId,
             command.RiderId,
@@ -116,7 +116,7 @@ public class RideAggregate : AggregateRoot
     {
         switch (domainEvent)
         {
-            case RideStarted e:
+            case RideRequested e:
                 Apply(e);
                 break;
             case RideAccepted e:
@@ -133,7 +133,7 @@ public class RideAggregate : AggregateRoot
         }
     }
 
-    private void Apply(RideStarted e)
+    private void Apply(RideRequested e)
     {
         Id = e.RideId;
         TenantId = e.TenantId;

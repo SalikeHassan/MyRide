@@ -426,10 +426,22 @@
     border: 2px solid currentColor;
   }
 
+  .timeline-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
   .timeline-label {
     font-size: 14px;
     color: #1e293b;
     line-height: 1.4;
+  }
+
+  .timeline-stream {
+    font-size: 11px;
+    font-family: monospace;
+    color: #94a3b8;
   }
 
   &.success {

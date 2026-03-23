@@ -9,6 +9,7 @@ public class DriverAggregate : AggregateRoot
     public string Name { get; private set; } = string.Empty;
     public string Phone { get; private set; } = string.Empty;
     public bool IsAssigned { get; private set; }
+    public Guid? CurrentRideId { get; private set; }
 
     private DriverAggregate() { }
 
@@ -35,6 +36,11 @@ public class DriverAggregate : AggregateRoot
 
     public void Assign(Guid rideId)
     {
+        if (IsAssigned && CurrentRideId == rideId)
+        {
+            return;
+        }
+
         if (IsAssigned)
         {
             throw new InvalidOperationException($"Driver {Id} already has an active ride.");
@@ -83,10 +89,12 @@ public class DriverAggregate : AggregateRoot
     private void Apply(DriverAssigned e)
     {
         IsAssigned = true;
+        CurrentRideId = e.RideId;
     }
 
     private void Apply(DriverFreed e)
     {
         IsAssigned = false;
+        CurrentRideId = null;
     }
 }
