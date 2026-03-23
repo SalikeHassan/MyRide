@@ -2,6 +2,8 @@ namespace MyRide.Domain.Sagas;
 
 public class CompleteRideSagaState
 {
+    public const int MaxRetries = 5;
+
     public Guid SagaId { get; private set; }
     public string TenantId { get; private set; } = string.Empty;
     public Guid RideId { get; private set; }

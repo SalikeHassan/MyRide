@@ -8,7 +8,7 @@ namespace MyRide.Application.Recovery;
 
 public class SagaRecoveryJob : BackgroundService
 {
-    private static readonly TimeSpan Interval = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan Interval = TimeSpan.FromSeconds(10);
     private readonly IServiceScopeFactory scopeFactory;
 
     public SagaRecoveryJob(IServiceScopeFactory scopeFactory)

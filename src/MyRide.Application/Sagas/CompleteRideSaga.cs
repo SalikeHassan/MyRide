@@ -5,8 +5,6 @@ namespace MyRide.Application.Sagas;
 
 public class CompleteRideSaga : ICompleteRideSaga
 {
-    private const int MaxRetries = 3;
-
     private readonly ICompleteRideSagaRepository repository;
     private readonly IDownstreamRidesClient ridesClient;
     private readonly IDownstreamDriversClient driversClient;
@@ -94,14 +92,10 @@ public class CompleteRideSaga : ICompleteRideSaga
         }
         catch (Exception ex)
         {
-            if (saga.RetryCount >= MaxRetries)
-            {
-                saga.MarkFreeDriverFailed(ex.Message);
-                await repository.Save(saga);
-                return;
-            }
-
             saga.IncrementRetryCount();
+
+            saga.MarkFreeDriverFailed(ex.Message);
+
             await repository.Save(saga);
         }
     }
@@ -120,14 +114,10 @@ public class CompleteRideSaga : ICompleteRideSaga
         }
         catch (Exception ex)
         {
-            if (saga.RetryCount >= MaxRetries)
-            {
-                saga.MarkPaymentFailed(ex.Message);
-                await repository.Save(saga);
-                return;
-            }
-
             saga.IncrementRetryCount();
+
+            saga.MarkPaymentFailed(ex.Message);
+
             await repository.Save(saga);
         }
     }
@@ -146,14 +136,10 @@ public class CompleteRideSaga : ICompleteRideSaga
         }
         catch (Exception ex)
         {
-            if (saga.RetryCount >= MaxRetries)
-            {
-                saga.MarkPayoutFailed(ex.Message);
-                await repository.Save(saga);
-                return;
-            }
-
             saga.IncrementRetryCount();
+
+            saga.MarkPayoutFailed(ex.Message);
+
             await repository.Save(saga);
         }
     }
