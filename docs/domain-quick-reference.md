@@ -43,22 +43,53 @@ Stream name: `{tenantId}-payout-{rideId}` *(keyed by RideId, not PayoutId)*
 
 ## 2. SAGA Status State Machines
 
-**Status enum values:**
+### RequestRideSaga (Backward Recovery — compensate on failure)
+
+Orchestrates finding a driver and creating the ride. If any step fails, compensating transactions roll back completed steps to leave the system consistent.
+
+**Status flow:**
 `Pending` → `DriverAssigned` → `RideCreated` / `Completed`
 `AssignDriverFailed` / `RideCreationFailed` → `Compensating` → `Compensated`
 
+| Status | Meaning |
+|---|---|
+| `Pending` | SAGA created, no steps completed yet |
+| `DriverAssigned` | Driver reserved via Drivers.API; ride creation next |
+| `RideCreated` / `Completed` | Ride created in Rides.API; SAGA done successfully |
+| `AssignDriverFailed` | Driver.API call failed; nothing to compensate, SAGA ends |
+| `RideCreationFailed` | Rides.API call failed; compensating step: free the assigned driver |
+| `Compensating` | Compensation in progress (freeing driver) |
+| `Compensated` | Driver freed successfully; system back to consistent state |
+
+---
+
 ### CompleteRideSaga (Forward Recovery — retry until success)
 
-**Status enum values:**
-`Pending` → `RideCompleted` → `DriverFreed` → `PaymentCharged` → `Completed`
-Failure statuses (all retried): `FreeDriverFailed` | `PaymentFailed` | `PayoutFailed`
+Orchestrates completing a ride, freeing the driver, charging the rider, and paying the driver. Because money has already moved (or partially moved), failure statuses are **never compensated** — the `SagaRecoveryJob` retries the failed step every 30 seconds until it succeeds.
 
-**Recovery job logic (Resume):**
+**Status flow:**
+`Pending` → `RideCompleted` → `DriverFreed` → `PaymentCharged` → `Completed`
+Failure statuses (all retried by recovery job): `FreeDriverFailed` | `PaymentFailed` | `PayoutFailed`
+
+| Status | Meaning |
+|---|---|
+| `Pending` | SAGA created, ride not yet marked complete |
+| `RideCompleted` | Ride status updated in Rides.API; driver free step next |
+| `DriverFreed` | Driver released back to available pool; charge rider next |
+| `PaymentCharged` | Rider charged successfully; pay driver next |
+| `Completed` | Driver paid; all steps done |
+| `FreeDriverFailed` | Drivers.API call failed; recovery job retries from `RideCompleted` |
+| `PaymentFailed` | Payments.API call failed; recovery job retries from `DriverFreed` |
+| `PayoutFailed` | Payouts.API call failed; recovery job retries from `PaymentCharged` |
+
+**Recovery job resume logic (`SagaRecoveryJob` — polls every 30s):**
 ```
 if status is RideCompleted  OR FreeDriverFailed  → retry FreeDriver
 if status is DriverFreed    OR PaymentFailed     → retry ChargeRider
 if status is PaymentCharged OR PayoutFailed      → retry PayDriver
 ```
+
+**Why forward-only?** Once a rider is charged, issuing a refund just to retry the payout would be worse than retrying the payout directly. Forward recovery assumes all downstream steps are idempotent (they are — see section 3c and 3d).
 
 ---
 
